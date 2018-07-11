@@ -74,5 +74,11 @@
 (add-hook 'lisp-mode-hook             #'enable-paredit-mode)
 (add-hook 'lisp-interaction-mode-hook #'enable-paredit-mode)
 (add-hook 'scheme-mode-hook           #'enable-paredit-mode)
-;; end Paredit
+;; idle-highlight-mode
 (require 'idle-highlight-mode)
+(defun idle-hl-mode-hook ()
+  (make-local-variable 'column-number-mode)
+  (column-number-mode t)
+  (if window-system (hl-line-mode t))
+  (idle-highlight-mode t))
+(add-hook 'emacs-lisp-mode-hook 'idle-hl-mode-hook)
