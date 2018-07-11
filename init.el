@@ -53,3 +53,14 @@
 ;; ido
 (require 'ido-completing-read+)
 (ido-ubiquitous-mode 1)
+;; magit
+; dash already loaded previously
+(require 'async)
+(require 'magit-popup)
+(require 'ghub)
+(require 'with-editor)
+(require 'magit)
+(with-eval-after-load 'info
+  (info-initialize)
+  (add-to-list 'Info-directory-list
+	       (concat user-emacs-directory "/pkg/magit/Documentation/")))
