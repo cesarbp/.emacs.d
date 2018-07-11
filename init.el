@@ -49,3 +49,7 @@
 
 ;;; --- Packages --- ;;;
 (require 'better-defaults)
+(require 'smex)
+;; ido
+(require 'ido-completing-read+)
+(ido-ubiquitous-mode 1)
