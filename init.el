@@ -84,3 +84,7 @@
 (add-hook 'emacs-lisp-mode-hook 'idle-hl-mode-hook)
 ;; End idle-highlight-mode
 (require 'find-file-in-project)  ; https://github.com/technomancy/find-file-in-project
+;; elisp slime nav
+(require 'elisp-slime-nav)
+(dolist (hook '(emacs-lisp-mode-hook ielm-mode-hook))
+  (add-hook hook 'elisp-slime-nav-mode))
