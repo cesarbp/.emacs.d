@@ -47,3 +47,5 @@
 
 (load (concat user-emacs-directory "my-autoload.el"))
 
+;;; --- Packages --- ;;;
+(require 'better-defaults)
