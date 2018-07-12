@@ -99,3 +99,9 @@
 (require 'window-number)
 (window-number-mode)
 (window-number-meta-mode)
+;; dashboard
+(require 'page-break-lines)
+(require 'dashboard)
+(dashboard-setup-startup-hook)
+
+
