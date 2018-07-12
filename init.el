@@ -64,7 +64,7 @@
 (with-eval-after-load 'info
   (info-initialize)
   (add-to-list 'Info-directory-list
-	       (concat user-emacs-directory "/pkg/magit/Documentation/")))
+	       (concat emacs-pkg-dir "/magit/Documentation/")))
 ;; Paredit
 (require 'paredit)
 (autoload 'enable-paredit-mode "paredit" "Turn on pseudo-structural editing of Lisp code." t)
@@ -88,3 +88,7 @@
 (require 'elisp-slime-nav)
 (dolist (hook '(emacs-lisp-mode-hook ielm-mode-hook))
   (add-hook hook 'elisp-slime-nav-mode))
+;; Color theme
+(require 'color-theme)
+(add-to-list 'custom-theme-load-path (concat emacs-pkg-dir "/atom-one-dark-theme/"))
+(load-theme 'atom-one-dark t)
