@@ -92,3 +92,6 @@
 (require 'color-theme)
 (add-to-list 'custom-theme-load-path (concat emacs-pkg-dir "/atom-one-dark-theme/"))
 (load-theme 'atom-one-dark t)
+;; Undo Tree
+(require 'undo-tree)
+(global-undo-tree-mode)
