@@ -103,5 +103,8 @@
 (require 'page-break-lines)
 (require 'dashboard)
 (dashboard-setup-startup-hook)
-
+;; org mode
+(define-key global-map "\C-cl" 'org-store-link)
+(define-key global-map "\C-ca" 'org-agenda)
+(setq org-log-done t)
 
