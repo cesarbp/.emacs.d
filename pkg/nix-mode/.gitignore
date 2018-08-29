@@ -1,0 +1,13 @@
+# Compiled
+*.elc
+
+# Packaging
+.cask
+
+# Nix
+result
+
+# Documentation
+*.html
+*.texi
+*.info
