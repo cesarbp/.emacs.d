@@ -113,5 +113,10 @@
 ;; custom
 (setq inhibit-spash-screen t)
 (setq inhibit-startup-message t)
-(global-linum-mode t)
+;; highlight current line number
+(require 'hlinum)
+(hlinum-activate)
+(global-linum-mode)
+(set-face-foreground 'linum "dim gray")
+
 
