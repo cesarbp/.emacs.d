@@ -118,6 +118,11 @@
 ;; company
 (require 'company)
 (add-hook 'after-init-hook 'global-company-mode)
+;; smart mode line
+(require 'smart-mode-line)
+(sml/setup)
+(setq sml/theme 'dark)
+
 ;; custom
 (setq inhibit-spash-screen t)
 (setq inhibit-startup-message t)
