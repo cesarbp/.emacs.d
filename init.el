@@ -144,5 +144,5 @@
 (setq inhibit-spash-screen t)
 (setq inhibit-startup-message t)
 (setq tab-always-indent 'complete)
-(setq sml/theme 'dark)
+
 
