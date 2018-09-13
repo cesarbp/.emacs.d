@@ -8,3 +8,5 @@ ido.last
 .\#*
 session.*
 bookmarks
+my-autoload.el
+
