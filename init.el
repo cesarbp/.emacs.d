@@ -110,13 +110,13 @@
 (add-hook 'org-mode-hook (lambda () (setq truncate-lines nil)))
 ;; nix mode
 (require 'nix-mode)
-;; custom
-(setq inhibit-spash-screen t)
-(setq inhibit-startup-message t)
 ;; highlight current line number
 (require 'hlinum)
 (hlinum-activate)
 (global-linum-mode)
 (set-face-foreground 'linum "dim gray")
 
+;; custom
+(setq inhibit-spash-screen t)
+(setq inhibit-startup-message t)
 
