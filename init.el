@@ -28,24 +28,26 @@
 (add-to-list 'load-path (concat user-emacs-directory "site-lisp"))
 
 ;; we will use use-package to load everything else
-(require 'use-package)
+;; (require 'use-package)
 
-(defun pnh-reinit-libs ()
-  (interactive)
-  (let ((generated-autoload-file (concat user-emacs-directory "my-autoload.el")))
-    (dolist (d (directory-files (concat user-emacs-directory "pkg") t "^[^\.]"))
-      (dolist (f (directory-files d t "\\.el$"))
-        (byte-compile-file f))
-      (update-directory-autoloads d))))
+;; (defun pnh-reinit-libs ()
+;;   (interactive)
+;;   (let ((generated-autoload-file (concat user-emacs-directory "my-autoload.el")))
+;;     (dolist (d (directory-files (concat user-emacs-directory "pkg") t "^[^\.]"))
+;;       (if (file-directory-p d)
+;; 	  (progn
+;; 	    (dolist (f (directory-files d t "\\.el$"))
+;;               (byte-compile-file f))
+;; 	    (update-directory-autoloads d))))))
 
-(dolist (l (directory-files (concat user-emacs-directory "pkg") nil "^[^\.]"))
-  (add-to-list 'load-path (concat user-emacs-directory "pkg/" l))
-  (autoload (intern l) (concat l ".el")))
+;; (dolist (l (directory-files (concat user-emacs-directory "pkg") nil "^[^\.]"))
+;;   (add-to-list 'load-path (concat user-emacs-directory "pkg/" l))
+;;   (autoload (intern l) (concat l ".el")))
 
-(when (not (file-exists-p (concat user-emacs-directory "my-autoload.el")))
-  (pnh-reinit-libs))
+;; (when (not (file-exists-p (concat user-emacs-directory "my-autoload.el")))
+;;   (pnh-reinit-libs))
 
-(load (concat user-emacs-directory "my-autoload.el"))
+;; (load (concat user-emacs-directory "my-autoload.el"))
 
 ;;; --- Packages --- ;;;
 (require 'eldoc)
