@@ -115,8 +115,11 @@
 (hlinum-activate)
 (global-linum-mode)
 (set-face-foreground 'linum "dim gray")
-
+;; company
+(require 'company)
+(add-hook 'after-init-hook 'global-company-mode)
 ;; custom
 (setq inhibit-spash-screen t)
 (setq inhibit-startup-message t)
+(setq tab-always-indent 'complete)
 
