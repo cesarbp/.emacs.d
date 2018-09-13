@@ -88,10 +88,6 @@
 (require 'elisp-slime-nav)
 (dolist (hook '(emacs-lisp-mode-hook ielm-mode-hook))
   (add-hook hook 'elisp-slime-nav-mode))
-;; Color theme
-(require 'color-theme)
-(add-to-list 'custom-theme-load-path (concat emacs-pkg-dir "/atom-one-dark-theme/"))
-(load-theme 'atom-one-dark t)
 ;; Undo Tree
 (require 'undo-tree)
 (global-undo-tree-mode)
@@ -103,6 +99,10 @@
 (require 'page-break-lines)
 (require 'dashboard)
 (dashboard-setup-startup-hook)
+;; Color theme
+(require 'color-theme)
+(add-to-list 'custom-theme-load-path (concat emacs-pkg-dir "/atom-one-dark-theme/"))
+(load-theme 'atom-one-dark t)
 ;; org mode
 (define-key global-map "\C-cl" 'org-store-link)
 (define-key global-map "\C-ca" 'org-agenda)
@@ -110,7 +110,8 @@
 (add-hook 'org-mode-hook (lambda () (setq truncate-lines nil)))
 ;; nix mode
 (require 'nix-mode)
-
 ;; custom
 (setq inhibit-spash-screen t)
 (setq inhibit-startup-message t)
+(global-linum-mode t)
+
