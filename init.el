@@ -141,6 +141,13 @@
 (require 'rich-minority)
 (require 'smart-mode-line)
 (sml/setup)
+;; python
+(require 'elpy)
+(if (executable-find "flake8")
+    (elpy-enable))
+(require 'py-autopep8)
+(if (and (executable-find "flake8") (executable-find "autopep8"))
+    (add-hook 'elpy-mode-hook 'py-autopep8-enable-on-save))
 
 ;; custom
 (setq inhibit-spash-screen t)
