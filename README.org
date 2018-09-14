@@ -38,15 +38,6 @@ By default, this will show three lists, recent files and bookmarks and org-agend
 One more widget is implemented by Dashboard but it's made optional because of it's dependency on a third party application, which is
 `projects` which shows you the list of known projectile projects.
 
-** Emacs Daemon
-
-In addition to the above, configure =initial-buffer-choice= to show
-Dashboard in frames created with =emacsclient -c= as follows:
-
-#+BEGIN_SRC elisp
-(setq initial-buffer-choice (lambda () (get-buffer "*dashboard*")))
-#+END_SRC
-
 * Configuration
 
 To update the banner or banner title
@@ -89,23 +80,7 @@ To add your own custom widget is pretty easy, define your widget's callback func
 (add-to-list 'dashboard-items '(agenda) t)
 #+END_SRC
 
-To show agenda for the upcoming seven days set the variable ~show-week-agenda-p~ to ~t~.
-#+BEGIN_SRC elisp
-(setq show-week-agenda-p t)
-#+END_SRC
-
 Note that setting list-size for the agenda list is intentionally ignored; all agenda items for the current day will be displayed.
-
-** Faces
-
-It is possible to customize Dashboard's appearance using the following faces:
-
-- ~dashboard-banner-logo-title-face~ ::
-     Highlights the banner title.
-- ~dashboard-heading-face~ ::
-     Highlights widget headings.
-- ~widget-button~ ::
-     Highlights widget items.
 
 * Shortcuts
 

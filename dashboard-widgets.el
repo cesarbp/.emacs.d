@@ -16,28 +16,9 @@
 ;;
 ;; Customs
 ;;
-
 (defcustom dashboard-page-separator "\n\f\n"
   "Separator to use between the different pages."
   :type 'string
-  :group 'dashboard)
-
-(defcustom dashboard-image-banner-max-height 0
-  "Maximum height of banner image.
-
-This setting applies only if Emacs is compiled with Imagemagick
-support.  When value is non-zero the image banner will be resized
-to the specified height, with aspect ratio preserved."
-  :type 'integer
-  :group 'dashboard)
-
-(defcustom dashboard-image-banner-max-width 0
-  "Maximum width of banner image.
-
-This setting applies if Emacs is compiled with Imagemagick
-support.  When value is non-zero the image banner will be resized
-to the specified width, with aspect ratio preserved."
-  :type 'integer
   :group 'dashboard)
 
 (defconst dashboard-banners-directory
@@ -89,17 +70,6 @@ If nil it is disabled.  Possible values for list-type are:
 Set to nil for unbounded.")
 
 ;;
-;; Faces
-;;
-(defface dashboard-banner-logo-title-face
-  '((t :inherit default))
-  "Face used for the banner title.")
-
-(defface dashboard-heading-face
-  '((t :inherit default))
-  "Face used for widget headings.")
-
-;;
 ;; Generic widget helpers
 ;;
 (defun dashboard-subseq (seq start end)
@@ -136,10 +106,6 @@ If MESSAGEBUF is not nil then MSG is also written in message buffer."
   "Insert a page break line in dashboard buffer."
   (dashboard-append dashboard-page-separator))
 
-(defun dashboard-insert-heading (heading)
-  "Insert a widget heading in dashboard buffer."
-  (insert (propertize heading 'face 'dashboard-heading-face)))
-
 ;;
 ;; BANNER
 ;;
@@ -165,13 +131,7 @@ If MESSAGEBUF is not nil then MSG is also written in message buffer."
   "Display an image BANNER."
   (when (file-exists-p banner)
     (let* ((title dashboard-banner-logo-title)
-           (spec (if (image-type-available-p 'imagemagick)
-                     (apply 'create-image banner 'imagemagick nil
-                            (append (when (> dashboard-image-banner-max-width 0)
-                                      (list :max-width dashboard-image-banner-max-width))
-                                    (when (> dashboard-image-banner-max-height 0)
-                                      (list :max-height dashboard-image-banner-max-height))))
-                   (create-image banner)))
+           (spec (create-image banner))
            (size (image-size spec))
            (width (car size))
            (left-margin (max 0 (floor (- dashboard-banner-length width) 2))))
@@ -180,10 +140,9 @@ If MESSAGEBUF is not nil then MSG is also written in message buffer."
       (insert (make-string left-margin ?\ ))
       (insert-image spec)
       (insert "\n\n")
-      (when title
-	(insert (make-string (max 0 (floor (/ (- dashboard-banner-length
-						 (+ (length title) 1)) 2))) ?\ ))
-	(insert (format "%s\n\n" (propertize title 'face 'dashboard-banner-logo-title-face)))))))
+      (insert (make-string (max 0 (floor (/ (- dashboard-banner-length
+                                        (+ (length title) 1)) 2))) ?\ ))
+      (insert (format "%s\n\n" title)))))
 
 (defun dashboard-get-banner-path (index)
   "Return the full path to banner with index INDEX."
@@ -230,7 +189,7 @@ If MESSAGEBUF is not nil then MSG is also written in message buffer."
 (defun dashboard-insert-recentf-list (list-display-name list)
   "Render LIST-DISPLAY-NAME title and items of LIST."
   (when (car list)
-    (dashboard-insert-heading list-display-name)
+    (insert list-display-name)
     (mapc (lambda (el)
             (insert "\n    ")
             (widget-create 'push-button
@@ -258,7 +217,7 @@ If MESSAGEBUF is not nil then MSG is also written in message buffer."
 (defun dashboard-insert-bookmark-list (list-display-name list)
   "Render LIST-DISPLAY-NAME title and bookmarks items of LIST."
   (when (car list)
-    (dashboard-insert-heading list-display-name)
+    (insert list-display-name)
     (mapc (lambda (el)
             (insert "\n    ")
             (widget-create 'push-button
@@ -287,7 +246,7 @@ If MESSAGEBUF is not nil then MSG is also written in message buffer."
 (defun dashboard-insert-project-list (list-display-name list)
   "Render LIST-DISPLAY-NAME title and project items of LIST."
   (when (car list)
-    (dashboard-insert-heading list-display-name)
+    (insert list-display-name)
     (mapc (lambda (el)
             (insert "\n    ")
             (widget-create 'push-button
@@ -321,7 +280,7 @@ If MESSAGEBUF is not nil then MSG is also written in message buffer."
 ;;
 (defun dashboard-insert-agenda-list (list-display-name list)
   "Render LIST-DISPLAY-NAME title and agenda items from LIST."
-  (dashboard-insert-heading list-display-name)
+  (insert list-display-name)
   (if (car list)
       (mapc (lambda (el)
               (insert "\n    ")
@@ -372,19 +331,15 @@ date part is considered."
                            (list gregorian-due-date))))
 
 (defun dashboard-get-agenda ()
-  "Get agenda items for today or for a week from now."
+  "Get agenda items for today."
   (org-compile-prefix-format 'agenda)
-  (if (and (boundp 'show-week-agenda-p) show-week-agenda-p)
-      (setq due-date (time-add (current-time) (* 86400 7)))
-    (setq due-date nil)
-    )
   (let* ((filtered-entries nil))
     (org-map-entries
      (lambda ()
        (let* ((schedule-time (org-get-scheduled-time (point)))
              (deadline-time (org-get-deadline-time (point)))
              (item (org-agenda-format-item
-		    (format-time-string "%Y-%m-%d" schedule-time)
+		    (format-time-string "%Y-%m-%d" deadline-time)
                     (org-get-heading t t)
                     (org-outline-level)
                     (org-get-category)
@@ -393,8 +348,8 @@ date part is considered."
              (loc (point))
              (file (buffer-file-name)))
          (when (and (not (org-entry-is-done-p))
-                    (or (and schedule-time (dashboard-date-due-p schedule-time due-date))
-                        (and deadline-time (dashboard-date-due-p deadline-time due-date))))
+                    (or (and schedule-time (dashboard-date-due-p schedule-time))
+                        (and deadline-time (dashboard-date-due-p deadline-time))))
            (setq filtered-entries
                  (append filtered-entries
                          (list (list item schedule-time deadline-time loc file)))))))
@@ -404,13 +359,9 @@ date part is considered."
 
 (defun dashboard-insert-agenda (list-size)
   "Add the list of LIST-SIZE items of agenda."
-  (if (and (boundp 'show-week-agenda-p) show-week-agenda-p)
-      (setq agenda-time-string "Agenda for the coming week:")
-    (setq agenda-time-string "Agenda for today:")
-    )
-  (when (dashboard-insert-agenda-list agenda-time-string
+  (when (dashboard-insert-agenda-list "Agenda for today:"
                                       (dashboard-get-agenda))
-    (dashboard-insert-shortcut "a" agenda-time-string)))
+    (dashboard-insert-shortcut "a" "Agenda for today:")))
 
 ;;
 ;; Registers
@@ -418,7 +369,7 @@ date part is considered."
 (defun dashboard-insert-register-list (list-display-name list)
   "Render LIST-DISPLAY-NAME title and registers items of LIST."
   (when (car list)
-    (dashboard-insert-heading list-display-name)
+    (insert list-display-name)
     (mapc (lambda (el)
             (let ((register (car el)))
               (insert "\n    ")
@@ -448,5 +399,4 @@ date part is considered."
 (declare-function projectile-relevant-known-projects "ext:projectile.el")
 
 (provide 'dashboard-widgets)
-
-;;; dashboard-widgets.el ends here
+;;; widgets.el ends here
