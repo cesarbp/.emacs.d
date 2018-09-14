@@ -68,7 +68,6 @@ PREFIX=/usr/local/share/
 DESTDIR=${PREFIX}emacs/site-lisp/emacs-async/
 install:
 	test -d ${DESTDIR} || mkdir ${DESTDIR}
-	cp -vf *.el $(DESTDIR)
 	cp -vf *.elc $(DESTDIR)
 	cp -vf async-autoloads.el $(DESTDIR)
 
