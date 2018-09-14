@@ -25,9 +25,16 @@ functionality came from if it turns out to be undesired.
 
 ## Usage
 
-1. Clone this repository.
-2. Add `(add-to-list 'load-path "/path/to/better-defaults")` to your init-file.
-3. Add `(require 'better-defaults)` to your init-file.
+Installing this library (using `M-x package-install` after adding
+[Marmalade](https://marmalade-repo.org) to your package sources is all
+that's required.
+
+You can run from source by placing a checkout on your `load-path` and
+running `(require 'better-defaults)`.
+
+Normally it's recommended to use `autoload` instead of `require` in
+your init file, but since better-defaults is such a small library it
+loads quickly enough not to impact startup time.
 
 ## New behaviour
 
