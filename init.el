@@ -58,6 +58,7 @@
 (require 'flx-ido)
 (ido-mode 1)
 (ido-everywhere 1)
+(ido-ubiquitous-mode 1)
 (flx-ido-mode 1)
 ; disable ido faces to see flx highlights.
 (setq ido-enable-flex-matching t)
@@ -152,6 +153,13 @@
 (require 'elpy)
 (if (executable-find "flake8")
     (elpy-enable))
+(if (executable-find "jupyter")
+    (progn
+      (setq python-shell-interpreter "jupyter"
+            python-shell-interpreter-args "console --simple-prompt"
+            python-shell-prompt-detect-failure-warning nil)
+      (add-to-list 'python-shell-completion-native-disabled-interpreters
+                   "jupyter")))
 (require 'py-autopep8)
 (if (and (executable-find "flake8") (executable-find "autopep8"))
     (add-hook 'elpy-mode-hook 'py-autopep8-enable-on-save))
