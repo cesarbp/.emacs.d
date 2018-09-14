@@ -74,12 +74,12 @@ behalf of some private tool.
 
 By default the only requested scope is `repo' because that is
 sufficient as well as required for most common uses.  This and
-other scopes are documented at URL `https://magit.vc/goto/2e586d36'.
+other scopes are documented at https://magit.vc/goto/2e586d36.
 
 If your private tools need other scopes, then you have to add
 them here *before* creating the token.  Alternatively you can
 edit the scopes of an existing token using the web interface
-at URL `https://github.com/settings/tokens'.")
+at https://github.com/settings/tokens.")
 
 (defvar ghub-override-system-name nil
   "If non-nil, the string used to identify the local machine.
@@ -114,17 +114,17 @@ used instead.")
 (defvar ghub-response-headers nil
   "The headers returned in response to the last request.
 `ghub-request' returns the response body and stores the
-response headers in this variable.")
+response header in this variable.")
 
 (cl-defun ghub-graphql (graphql &optional variables
                                 &key username auth host
                                 silent
                                 callback errorback extra)
   "Make a GraphQL request using GRAPHQL and VARIABLES.
-Return the response as a JSON-like alist.  Even if the response
+Return the response as a json-like alist.  Even if the response
 contains `errors', do not raise an error.  GRAPHQL is a GraphQL
-string.  VARIABLES is a JSON-like alist.  The other arguments
-behave as for `ghub-request' (which see)."
+string.  VARIABLES is a json-like alist.  The other arguments
+behave like for `ghub-request' (which see)."
   (cl-assert (stringp graphql))
   (cl-assert (not (stringp variables)))
   (ghub-request "POST" "/graphql" nil :payload
@@ -227,7 +227,7 @@ Like calling `ghub-request' (which see) with \"DELETE\" as METHOD."
 
 Also place the response header in `ghub-response-headers'.
 
-METHOD is the HTTP method, given as a string.
+METHOD is the http method, given as a string.
 RESOURCE is the resource to access, given as a string beginning
   with a slash.
 
@@ -260,7 +260,7 @@ If NOERROR is non-nil, then do not raise an error if the request
   return the error payload instead of nil.
 If READER is non-nil, then it is used to read and return from the
   response buffer.  The default is `ghub--read-json-payload'.
-  For the very few resources that do not return JSON, you might
+  For the very few resources that do not return json, you might
   want to use `ghub--decode-payload'.
 
 If USERNAME is non-nil, then make a request on behalf of that
@@ -275,8 +275,8 @@ Each package that uses `ghub' should use its own token. If AUTH
   to identify itself, using a symbol matching its name.
 
   Package authors who find this inconvenient should write a
-  wrapper around this function and possibly for the
-  method-specific functions as well.
+  wrapper around this function and possibly for the method
+  specific functions also.
 
   Some symbols have a special meaning.  `none' means to make an
   unauthorized request.  `basic' means to make a password based
@@ -296,7 +296,7 @@ If HOST is non-nil, then connect to that Github instance.  This
   argument.
 
 If FORGE is `gitlab', then connect to Gitlab.com or, depending
-  on HOST, to another Gitlab instance.  This is only intended for
+  on HOST to another Gitlab instance.  This is only intended for
   internal use.  Instead of using this argument you should use
   function `glab-request' and other `glab-*' functions.
 
@@ -309,7 +309,7 @@ If CALLBACK and/or ERRORBACK is non-nil, then make one or more
 
 Both callbacks are called with four arguments.
   1. For CALLBACK, the combined value of the retrieved pages.
-     For ERRORBACK, the error that occured when retrieving the
+     For ERRORBACk, the error that occured when retrieving the
      last page.
   2. The headers of the last page as an alist.
   3. Status information provided by `url-retrieve'. Its `:error'
@@ -422,19 +422,11 @@ in `ghub-response-headers'."
            (if (functionp headers) (funcall headers) headers)))
         (url-request-method (ghub--req-method req))
         (url-request-data payload)
-        (url-show-status nil)
         (url (ghub--req-url req))
         (silent (ghub--req-silent req)))
     (if (or (ghub--req-callback  req)
             (ghub--req-errorback req))
         (url-retrieve url 'ghub--handle-response (list req) silent)
-      ;; When this function has already been called, then it is a
-      ;; no-op.  Otherwise it sets `url-registered-auth-schemes' among
-      ;; other things.  If we didn't ensure that it has been run, then
-      ;; `url-retrieve-synchronously' would do it, which would cause
-      ;; the value that we let-bind below to be overwritten, and the
-      ;; "default" value to be lost outside the let-binding.
-      (url-do-setup)
       (with-current-buffer
           (let ((url-registered-auth-schemes
                  '(("basic" ghub--basic-auth-errorback . 10))))
@@ -488,8 +480,8 @@ in `ghub-response-headers'."
     (unless url-http-end-of-headers
       (error "BUG: missing headers %s" (plist-get status :error)))
     (goto-char (1+ url-http-end-of-headers))
-    (if (and req (or (ghub--req-callback req)
-                     (ghub--req-errorback req)))
+    (if (or (ghub--req-callback req)
+            (ghub--req-errorback req))
         (setq-local ghub-response-headers headers)
       (setq-default ghub-response-headers headers))
     headers))
@@ -584,11 +576,7 @@ SCOPES are the scopes the token is given access to."
                       `((scopes . ,scopes)
                         (note   . ,(ghub--ident-github package)))
                       :username username :auth 'basic :host host))))
-      ;; Build-in back-ends return a function that does the actual
-      ;; saving, while for some third-party back-ends ":create t"
-      ;; is enough.
-      (when (functionp save)
-        (funcall save))
+      (funcall save)
       ;; If the Auth-Source cache contains the information that there
       ;; is no value, then setting the value does not invalidate that
       ;; now incorrect information.
@@ -657,45 +645,45 @@ has to provide several values including their password."
   ;; This gets called twice.  Do nothing the first time,
   ;; when PROMPT is nil.  See `url-get-authentication'.
   (when prompt
-    (if (assoc "X-GitHub-OTP" (ghub--handle-response-headers nil nil))
-        (progn
-          (setq url-http-extra-headers
-                `(("Content-Type" . "application/json")
-                  ("X-GitHub-OTP" . ,(ghub--read-2fa-code))
-                  ;; Without "Content-Type" and "Authorization".
-                  ;; The latter gets re-added from the return value.
-                  ,@(cddr url-http-extra-headers)))
-          ;; Return the cached values, they are correct.
-          (url-basic-auth url nil nil nil))
-      ;; Remove the invalid cached values and fail, which
-      ;; is better than the invalid values sticking around.
-      (setq url-http-real-basic-auth-storage
-            (cl-delete (format "%s:%d" (url-host url) (url-port url))
-                       url-http-real-basic-auth-storage
-                       :test #'equal :key #'car))
-      nil)))
+    (let ((otp (assoc "X-GitHub-OTP" (ghub--handle-response-headers nil nil))))
+      (if otp
+          (progn
+            (setq url-http-extra-headers
+                  `(("Content-Type" . "application/json")
+                    ("X-GitHub-OTP" . ,(ghub--read-2fa-code))
+                    ;; Without "Content-Type" and "Authorization".
+                    ;; The latter gets re-added from the return value.
+                    ,@(cddr url-http-extra-headers)))
+            ;; Return the cached values, they are correct.
+            (url-basic-auth url nil nil nil))
+        ;; Remove the invalid cached values and fail, which
+        ;; is better than the invalid values sticking around.
+        (setq url-http-real-basic-auth-storage
+              (cl-delete (format "%s:%d" (url-host url) (url-port url))
+                         url-http-real-basic-auth-storage
+                         :test #'equal :key #'car))
+        nil))))
 
 (defun ghub--token (host username package &optional nocreate forge)
   (let* ((user (ghub--ident username package))
-         (token
-          (or (car (ghub--auth-source-get (list :secret)
-                     :host host :user user))
-              (progn
-                ;; Auth-Source caches the information that there is no
-                ;; value, but in our case that is a situation that needs
-                ;; fixing so we want to keep trying by invalidating that
-                ;; information.  The (:max 1) is needed for Emacs releases
-                ;; before 26.1.
-                (auth-source-forget (list :max 1 :host host :user user))
-                (and (not nocreate)
-                     (if (eq forge 'gitlab)
-                         (error
-                          (concat
-                           "Required Gitlab token does not exist.  See "
-                           "https://magit.vc/manual/ghub/Gitlab-Support.html "
-                           "for instructions."))
-                       (ghub--confirm-create-token host username package)))))))
-    (if (functionp token) (funcall token) token)))
+         (token (car (ghub--auth-source-get (list :secret)
+                       :host host :user user))))
+    (or (if (functionp token) (funcall token) token)
+        (progn
+          ;; Auth-Source caches the information that there is no
+          ;; value, but in our case that is a situation that needs
+          ;; fixing so we want to keep trying by invalidating that
+          ;; information.  The (:max 1) is needed for Emacs releases
+          ;; before 26.1.
+          (auth-source-forget (list :max 1 :host host :user
+          user))
+          (and (not nocreate)
+               (if (eq forge 'gitlab)
+                   (error
+                    (concat "Required Gitlab token does not exist.  See "
+                            "https://magit.vc/manual/ghub/Gitlab-Support.html "
+                            "for instructions."))
+                 (ghub--confirm-create-token host username package)))))))
 
 (defun ghub--host (&optional forge)
   (if (eq forge 'gitlab)
