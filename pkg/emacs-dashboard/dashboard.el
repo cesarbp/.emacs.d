@@ -11,13 +11,13 @@
 ;;
 ;; Created: October 05, 2016
 ;; Modified: December 30, 2016
-;; Version: 1.2.5
+;; Version: 1.2.4
 ;; Keywords: startup screen tools
 ;; Package-Requires: ((emacs "24.4") (page-break-lines "0.11"))
 ;;; Commentary:
 
 ;; An extensible Emacs dashboard, with sections for
-;; bookmarks, projectile projects, org-agenda and more.
+;; bookmarks, projectil projects, org-agenda and more.
 
 ;;; Code:
 
@@ -128,7 +128,7 @@
 
 (add-hook 'window-setup-hook
           (lambda ()
-            (add-hook 'window-size-change-functions 'dashboard-resize-on-hook)
+            (add-hook 'window-configuration-change-hook 'dashboard-resize-on-hook)
             (dashboard-resize-on-hook)))
 
 (defun dashboard-refresh-buffer ()
@@ -138,7 +138,7 @@
   (dashboard-insert-startupify-lists)
   (switch-to-buffer dashboard-buffer-name))
 
-(defun dashboard-resize-on-hook (&optional _)
+(defun dashboard-resize-on-hook ()
   (let ((space-win (get-buffer-window dashboard-buffer-name))
         (frame-win (frame-selected-window)))
     (when (and space-win
