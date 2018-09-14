@@ -38,8 +38,8 @@ help:
 	$(info make html         - generate html manual file)
 	$(info make html-dir     - generate html manual directory)
 	$(info make pdf          - generate pdf manual)
-	$(info make publish      - publish snapshot manuals)
-	$(info make release      - publish release manuals)
+	$(info make publish      - publish snapshot html and pdf manuals)
+	$(info make release      - publish release html and pdf manuals)
 	$(info make clean        - remove most generated files)
 	@printf "\n"
 
@@ -86,26 +86,15 @@ dir: $(PKG).info
 	@printf "Generating $@\n"
 	@printf "%s" $^ | xargs -n 1 $(INSTALL_INFO) --dir=$@
 
-HTML_FIXUP_CSS    = '/<link rel="stylesheet" type="text\/css" href="\/assets\/page.css">/a\
-<link class="s-css-s--style" rel="stylesheet"           title="Default"               href="/assets/themes/default.css">\
-\n<link class="s-css-s--style" rel="stylesheet alternate" title="Default high contrast" href="/assets/themes/default-high-contrast.css">\
-\n<link class="s-css-s--style" rel="stylesheet alternate" title="Solarized dark xterm"  href="/assets/themes/solarized-dark-xterm.css">\
-\n<link class="s-css-s--style" rel="stylesheet alternate" title="Black on white"        href="/assets/themes/black-on-white.css">\
-\n<script src="/assets/js/simple-css-switch.js"></script>'
-HTML_FIXUP_ONLOAD = 's/<body lang="en">/<body lang="en" onload="simpleCssSwitch()">/'
-HTML_FIXUP_MENU   = '/<\/body>/i<div id="s-css-s--menu"><\/div>'
-
 %.html: %.texi
 	@printf "Generating $@\n"
 	@$(MAKEINFO) --html --no-split $(MANUAL_HTML_ARGS) $<
-	@sed -i -e $(HTML_FIXUP_CSS) -e $(HTML_FIXUP_ONLOAD) -e $(HTML_FIXUP_MENU) $@
+	@./.fixup-html.sh $@
 
 html-dir: $(PKG).texi
 	@printf "Generating $(PKG)/*.html\n"
 	@$(MAKEINFO) --html $(MANUAL_HTML_ARGS) $<
-	@for f in $$(find $(PKG) -name '*.html') ; do \
-	sed -i -e $(HTML_FIXUP_CSS) -e $(HTML_FIXUP_ONLOAD) -e $(HTML_FIXUP_MENU) $$f ; \
-	done
+	@./.fixup-html.sh $(PKG)
 
 %.pdf: %.texi
 	@printf "Generating $@\n"
@@ -129,7 +118,7 @@ space := $(empty) $(empty)
 publish: html html-dir pdf
 	@aws s3 cp $(PKG).html $(PUBLISH_TARGET)
 	@aws s3 cp $(PKG).pdf  $(PUBLISH_TARGET)
-	@aws s3 sync --delete $(PKG) $(PUBLISH_TARGET)$(PKG)/
+	@aws s3 sync $(PKG)    $(PUBLISH_TARGET)$(PKG)/
 	@printf "Generating CDN invalidation\n"
 	@aws cloudfront create-invalidation --distribution-id $(CFRONT_DIST) --paths \
 	"$(subst $(space),$(comma),$(addprefix $(PUBLISH_PATH),$(CFRONT_PATHS)))" > /dev/null
@@ -137,7 +126,7 @@ publish: html html-dir pdf
 release: html html-dir pdf
 	@aws s3 cp $(PKG).html $(RELEASE_TARGET)
 	@aws s3 cp $(PKG).pdf  $(RELEASE_TARGET)
-	@aws s3 sync --delete $(PKG) $(RELEASE_TARGET)$(PKG)/
+	@aws s3 sync $(PKG)    $(RELEASE_TARGET)$(PKG)/
 	@printf "Generating CDN invalidation\n"
 	@aws cloudfront create-invalidation --distribution-id $(CFRONT_DIST) --paths \
 	"$(subst $(space),$(comma),$(addprefix $(RELEASE_PATH),$(CFRONT_PATHS)))" > /dev/null
