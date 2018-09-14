@@ -148,6 +148,9 @@
 (require 'py-autopep8)
 (if (and (executable-find "flake8") (executable-find "autopep8"))
     (add-hook 'elpy-mode-hook 'py-autopep8-enable-on-save))
+;; yasnippet
+(require 'yasnippet)
+(yas-global-mode 1)
 
 ;; custom
 (setq inhibit-spash-screen t)
