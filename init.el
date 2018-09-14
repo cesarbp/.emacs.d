@@ -176,5 +176,3 @@
 (setq inhibit-startup-message t)
 (setq tab-always-indent 'complete)
 (winner-mode 1)
-
-
