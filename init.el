@@ -175,5 +175,6 @@
 (setq inhibit-spash-screen t)
 (setq inhibit-startup-message t)
 (setq tab-always-indent 'complete)
+(winner-mode 1)
 
 

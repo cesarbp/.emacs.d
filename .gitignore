@@ -10,3 +10,4 @@ session.*
 bookmarks
 my-autoload.el
 projectile-bookmarks.eld
+.emacs.desktop*
