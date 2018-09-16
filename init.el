@@ -152,14 +152,18 @@
 ;; python
 (require 'elpy)
 (if (executable-find "flake8")
-    (elpy-enable))
-(if (executable-find "jupyter")
     (progn
-      (setq python-shell-interpreter "jupyter"
-            python-shell-interpreter-args "console --simple-prompt"
+      (elpy-enable)
+      (setq python-shell-interpreter "python"
+            python-shell-interpreter-args "-i"
             python-shell-prompt-detect-failure-warning nil)
+      ;; (setq python-shell-interpreter "jupyter"
+      ;;       python-shell-interpreter-args "console --simple-prompt"
+      ;;       python-shell-prompt-detect-failure-warning t)
       (add-to-list 'python-shell-completion-native-disabled-interpreters
                    "jupyter")))
+
+
 (require 'py-autopep8)
 (if (and (executable-find "flake8") (executable-find "autopep8"))
     (add-hook 'elpy-mode-hook 'py-autopep8-enable-on-save))
@@ -176,3 +180,4 @@
 (setq inhibit-startup-message t)
 (setq tab-always-indent 'complete)
 (winner-mode 1)
+
