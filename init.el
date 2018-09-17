@@ -105,10 +105,19 @@
 (require 'window-number)
 (window-number-mode)
 (window-number-meta-mode)
+;; projectile
+(require 'projectile)
+(projectile-mode +1)
+(define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map)
 ;; dashboard
 (require 'page-break-lines)
 (require 'dashboard)
 (dashboard-setup-startup-hook)
+(setq dashboard-items '((recents  . 5)
+                        (bookmarks . 5)
+                        (projects . 5)
+                        (agenda . 5)
+                        (registers . 5)))
 ;; Color theme
 (require 'color-theme)
 (add-to-list 'custom-theme-load-path (concat emacs-pkg-dir "/atom-one-dark-theme/"))
@@ -151,29 +160,24 @@
 (sml/setup)
 ;; python
 (require 'elpy)
-(if (executable-find "flake8")
-    (progn
-      (elpy-enable)
-      (setq python-shell-interpreter "python"
-            python-shell-interpreter-args "-i"
-            python-shell-prompt-detect-failure-warning nil)
-      ;; (setq python-shell-interpreter "jupyter"
-      ;;       python-shell-interpreter-args "console --simple-prompt"
-      ;;       python-shell-prompt-detect-failure-warning t)
-      (add-to-list 'python-shell-completion-native-disabled-interpreters
-                   "jupyter")))
+(elpy-enable)
+;; (setq python-shell-interpreter "python"
+;;       python-shell-interpreter-args "-i"
+;;       python-shell-prompt-detect-failure-warning nil)
+;; (setq python-shell-interpreter "jupyter"
+;;       python-shell-interpreter-args "console --simple-prompt"
+;;       python-shell-prompt-detect-failure-warning nil)
+(setq python-shell-interpreter "ipython"
+      python-shell-interpreter-args "-i --simple-prompt")
+(add-to-list 'python-shell-completion-native-disabled-interpreters
+             "jupyter")
 
 
 (require 'py-autopep8)
-(if (and (executable-find "flake8") (executable-find "autopep8"))
-    (add-hook 'elpy-mode-hook 'py-autopep8-enable-on-save))
+(add-hook 'elpy-mode-hook 'py-autopep8-enable-on-save)
 ;; yasnippet
 (require 'yasnippet)
 (yas-global-mode 1)
-;; projectile
-(require 'projectile)
-(projectile-mode +1)
-(define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map)
 ;; buffer-move
 (require 'buffer-move)
 (global-set-key (kbd "<C-s-up>")     'buf-move-up)
