@@ -184,6 +184,12 @@
 (global-set-key (kbd "<C-s-down>")   'buf-move-down)
 (global-set-key (kbd "<C-s-left>")   'buf-move-left)
 (global-set-key (kbd "<C-s-right>")  'buf-move-right)
+;; multiple cursors
+(require 'multiple-cursors)
+(global-set-key (kbd "C-S-c C-S-c") 'mc/edit-lines)
+(global-set-key (kbd "C->") 'mc/mark-next-like-this)
+(global-set-key (kbd "C-<") 'mc/mark-previous-like-this)
+(global-set-key (kbd "C-c C-<") 'mc/mark-all-like-this)
 
 
 ;; custom
