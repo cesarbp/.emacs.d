@@ -139,9 +139,11 @@
 (add-hook 'after-init-hook 'global-company-mode)
 ;; Web mode
 (require 'web-mode)
-(add-to-list 'auto-mode-alist '("\\.phtml\\'" . web-mode))
-(add-to-list 'auto-mode-alist '("\\.tpl\\.php\\'" . web-mode))
+;(add-to-list 'auto-mode-alist '("\\.phtml\\'" . web-mode))
+;(add-to-list 'auto-mode-alist '("\\.tpl\\.php\\'" . web-mode))
 (add-to-list 'auto-mode-alist '("\\.html?\\'" . web-mode))
+;; PHP mode
+(require 'php-mode)
 
 
 (custom-set-variables
