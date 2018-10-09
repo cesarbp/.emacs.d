@@ -198,3 +198,4 @@
 (setq tab-always-indent 'complete)
 (winner-mode 1)
 
+(put 'erase-buffer 'disabled nil)
