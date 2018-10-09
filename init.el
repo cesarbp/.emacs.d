@@ -137,6 +137,11 @@
 ;; company
 (require 'company)
 (add-hook 'after-init-hook 'global-company-mode)
+;; Web mode
+(require 'web-mode)
+(add-to-list 'auto-mode-alist '("\\.phtml\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.tpl\\.php\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.html?\\'" . web-mode))
 
 
 (custom-set-variables
@@ -190,12 +195,14 @@
 (global-set-key (kbd "C->") 'mc/mark-next-like-this)
 (global-set-key (kbd "C-<") 'mc/mark-previous-like-this)
 (global-set-key (kbd "C-c C-<") 'mc/mark-all-like-this)
-
-
 ;; custom
 (setq inhibit-spash-screen t)
 (setq inhibit-startup-message t)
 (setq tab-always-indent 'complete)
 (winner-mode 1)
-
 (put 'erase-buffer 'disabled nil)
+;; sql 4 spaces
+(add-hook 'sql-mode-hook
+          (lambda ()
+            (setq indent-tabs-mode nil)
+            (setq c-basic-offset 4)))
