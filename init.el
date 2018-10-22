@@ -142,6 +142,11 @@
 ;(add-to-list 'auto-mode-alist '("\\.phtml\\'" . web-mode))
 ;(add-to-list 'auto-mode-alist '("\\.tpl\\.php\\'" . web-mode))
 (add-to-list 'auto-mode-alist '("\\.html?\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.j2\\'" . web-mode))
+(setq web-mode-enable-current-element-highlight t)
+(setq web-mode-enable-current-column-highlight t)
+(setq web-mode-engines-alist
+      '(("jinja"    . "\\.j2\\'")))
 ;; PHP mode
 (require 'php-mode)
 
@@ -159,7 +164,7 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- )
+ '(default ((t (:inherit nil :stipple nil :background "#282C34" :foreground "#ABB2BF" :inverse-video nil :box nil :strike-through nil :overline nil :underline nil :slant normal :weight normal :height 108 :width normal :foundry "DAMA" :family "Ubuntu Mono")))))
 
 ;; smart mode line
 (require 'rich-minority)
