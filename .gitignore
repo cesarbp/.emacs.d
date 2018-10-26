@@ -12,3 +12,4 @@ my-autoload.el
 projectile-bookmarks.eld
 .emacs.desktop*
 tramp
+.mc-lists.el
