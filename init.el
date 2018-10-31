@@ -183,10 +183,10 @@
       python-shell-interpreter-args "-i --simple-prompt")
 (add-to-list 'python-shell-completion-native-disabled-interpreters
              "jupyter")
-
-
 (require 'py-autopep8)
 (add-hook 'elpy-mode-hook 'py-autopep8-enable-on-save)
+;; javascript
+(require 'indium)
 ;; yasnippet
 (require 'yasnippet)
 (yas-global-mode 1)
