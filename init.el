@@ -186,7 +186,13 @@
 (require 'py-autopep8)
 (add-hook 'elpy-mode-hook 'py-autopep8-enable-on-save)
 ;; javascript
-(require 'indium)
+;;(require 'indium)
+(require 'js2-mode)
+(add-to-list 'auto-mode-alist '("\\.js\\'" . js2-mode))
+(add-to-list 'auto-mode-alist '("\\.mjs\\'" . js2-mode))
+;; Better imenu
+(add-hook 'js2-mode-hook #'js2-imenu-extras-mode)
+
 ;; yasnippet
 (require 'yasnippet)
 (yas-global-mode 1)
