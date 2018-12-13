@@ -231,3 +231,20 @@
           (lambda ()
             (setq indent-tabs-mode nil)
             (setq c-basic-offset 4)))
+;; Mac OS config
+(when (string-equal system-type "darwin")
+    (custom-set-faces
+     ;; custom-set-faces was added by Custom.
+     ;; If you edit it by hand, you could mess it up, so be careful.
+     ;; Your init file should contain only one such instance.
+     ;; If there is more than one, they won't work right.
+     '(default ((t (:inherit nil :stipple nil :background "#282C34" :foreground "#ABB2BF" :inverse-video nil :box nil :strike-through nil :overline nil :underline nil :slant normal :weight normal :height 108 :width normal :foundry "DAMA" :family "SF Mono")))))
+    (setq mac-option-modifier 'super)
+    (setq mac-command-modibfier 'meta)
+    (setq ring-bell-function
+      (lambda ()
+        (let ((orig-bg (face-background 'mode-line)))
+          (set-face-background 'mode-line "#2F4F4F")
+          (run-with-idle-timer 0.1 nil
+                               (lambda (bg) (set-face-background 'mode-line bg))
+                               orig-bg)))))
