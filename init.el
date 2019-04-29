@@ -239,6 +239,7 @@
 (setq tab-always-indent 'complete)
 (winner-mode 1)
 (put 'erase-buffer 'disabled nil)
+(setq shell-command-switch "-ic")
 ;; sql 4 spaces
 (add-hook 'sql-mode-hook
           (lambda ()
