@@ -72,13 +72,71 @@ Available subcommands:
     (should (member "changepassword" (elpy-django--get-commands)))))
 
 (ert-deftest elpy-module-django-get-test-runner-should-error-if-no-django-settings-module-environment ()
-  (setenv "DJANGO_SETTINGS_MODULE" "")
+  (setenv "DJANGO_SETTINGS_MODULE" nil)
   (should-error (elpy-django--get-test-runner)))
 
 (ert-deftest elpy-module-django-get-test-runner-should-error-if-cannot-import-django-settings-module ()
   (setenv "DJANGO_SETTINGS_MODULE" "popcorn")
   (should-error (elpy-django--get-test-runner)))
 
-(ert-deftest elpy-module-django-get-test-format-should-error-if-cannot-find-test-runner ()
-  (mletf* ((elpy-django--get-test-runner "math")))
-  (should-error (elpy--get-django-test-format)))
+(ert-deftest elpy-module-django-get-test-format-regex-match ()
+  "elpy-django--get-test-runner should interpreter elpy-django-test-runner-formats
+keys as regular expression"
+  (mletf* ((elpy-django--get-test-runner () "package.mod.Runner")
+           (elpy-django-test-runner-formats
+            '(("package.mod.Runner2" . ".") ("Runner$" . "~"))))
+          (should (equal (elpy-django--get-test-format) "~"))))
+
+(ert-deftest elpy-module-django-get-test-format-dot-default ()
+  "elpy-django--get-test-runner should default to `.`"
+  (mletf* ((elpy-django--get-test-runner () "a.b.TestRunner")
+           (should (equal (elpy-django--get-test-format) ".")))))
+
+
+(ert-deftest elpy-module-django-get-test-format-should-error-with-no-matching-format ()
+  "elpy-django--get-test-runner should default to `.`"
+  (mletf* ((elpy-django--get-test-runner () "Runner3")
+           (elpy-django-test-runner-formats
+            '(("Runner2$" . ".") ("Runner4$" . "~"))))
+          (should-error (elpy-django--get-test-format))))
+
+
+(ert-deftest elpy-module-django-get-test-runner-should-cache-result ()
+  (setenv "DJANGO_SETTINGS_MODULE" "popcorn")
+  (mletf* ((call-process (&rest args) 0)
+           (shell-command-to-string (&rest args) "my.Runner")
+           (elpy-project-root () "/proj/root/"))
+          (elpy-django--get-test-runner)
+          (let ((cached-runner (cdr (assoc '("/proj/root/" "popcorn")
+                                           elpy-django--test-runner-cache))))
+            (should (equal cached-runner "my.Runner")))))
+
+
+(ert-deftest elpy-module-django-get-test-runner-should-use-cached-result ()
+  (setenv "DJANGO_SETTINGS_MODULE" "popcorn")
+  (mletf* ((elpy-project-root () "/proj/root/")
+           (elpy-django--test-runner-cache
+            '((("/proj/root/" "popcorn") . "my.Runner"))))
+          (should (equal (elpy-django--get-test-runner) "my.Runner"))))
+
+(ert-deftest elpy-module-django-get-test-runner-cache-size-limit ()
+  (mletf* ((elpy-django--test-runner-cache-max-size 7)
+           (getenv (var) "djsettings")
+           (call-process (&rest args) 0)
+           )
+          (dotimes (i 5)
+            (mletf* ((elpy-project-root () (format "/proj/root/%d" i))
+                     (shell-command-to-string (&rest args)
+                                              (format "my.Runner%d" i)))
+                    (elpy-django--get-test-runner)))
+
+          (should (equal (length elpy-django--test-runner-cache) 5))
+
+          (dotimes (i 5)
+            (mletf* ((elpy-project-root () (format "/proj/root/%d" (+ i 5)))
+                     (shell-command-to-string (&rest args)
+                                              (format "my.Runner%d" (+ i 5))))
+                    (elpy-django--get-test-runner)))
+
+          (should (equal (length elpy-django--test-runner-cache) 7))))
+          
