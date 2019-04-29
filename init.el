@@ -227,7 +227,6 @@
 (require 'dante)
 (defconst haskell-mode-dir (concat emacs-pkg-dir "/" "haskell-mode"))
 (add-to-list 'load-path haskell-mode-dir)
-(require 'haskell-mode-autoloads)
 (add-to-list 'Info-default-directory-list haskell-mode-dir)
 (add-hook 'haskell-mode-hook 'dante-mode)
 (add-hook 'haskell-mode-hook 'flycheck-mode)
