@@ -232,7 +232,7 @@
 (add-hook 'haskell-mode-hook 'flycheck-mode)
 (condition-case nil
     (require 'haskell-mode-autoloads)
-  (error (message "haskell mode files need to be generated, see github README of haskell-mode")))
+  (error (message "haskell mode files need to be generated, see github README of haskell-mode. Need to do 'make haskell-mode-autoloads.el'")))
 (setq flymake-no-changes-timeout nil)
 (setq flymake-start-syntax-check-on-newline nil)
 (setq flycheck-check-syntax-automatically '(save mode-enabled))
