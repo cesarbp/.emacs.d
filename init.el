@@ -230,6 +230,9 @@
 (add-to-list 'Info-default-directory-list haskell-mode-dir)
 (add-hook 'haskell-mode-hook 'dante-mode)
 (add-hook 'haskell-mode-hook 'flycheck-mode)
+(condition-case nil
+    (require 'haskell-mode-autoloads)
+  (error (message "haskell mode files need to be generated, see github README of haskell-mode")))
 (setq flymake-no-changes-timeout nil)
 (setq flymake-start-syntax-check-on-newline nil)
 (setq flycheck-check-syntax-automatically '(save mode-enabled))
@@ -240,6 +243,10 @@
 (winner-mode 1)
 (put 'erase-buffer 'disabled nil)
 (setq shell-command-switch "-ic")
+;; exec-path-from-shell
+(require 'exec-path-from-shell)
+(when (memq window-system '(mac ns x))
+  (exec-path-from-shell-initialize))
 ;; sql 4 spaces
 (add-hook 'sql-mode-hook
           (lambda ()
