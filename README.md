@@ -39,6 +39,7 @@ Make sure you have this in your [init file](http://www.gnu.org/software/emacs/ma
    (quote
     (("gnu" . "http://elpa.gnu.org/packages/")
      ("melpa-stable" . "http://stable.melpa.org/packages/")))))
+(package-initialize)
 ```
 
 Then run emacs, and evaluate:
@@ -59,7 +60,7 @@ going!
 ## Advanced configuration
 
 For setup instructions, please consult the integrated `haskell-mode`
-[Info](https://www.gnu.org/software/texinfo/manual/info/info.html)
+[Info](https://www.gnu.org/software/texinfo/manual/texinfo/texinfo.html)
 manual which can be accessed after installation via `M-x
 info-display-manual [RET] haskell-mode`.  Alternatively, you can also
 direct your browser to the
@@ -104,6 +105,22 @@ make EMACS=/path/to/your/emacs
 (require 'haskell-mode-autoloads)
 (add-to-list 'Info-default-directory-list "~/lib/emacs/haskell-mode/")
 ```
+
+### Installation from git repository on macOS
+
+There are a couple of things to note if you want to install directly from
+git on macOS systems, as of version 10.13 High Sierra: 
+
+- The version of makeinfo that is installed by
+  default in /usr/bin is quite old and will cause the above make 
+  command to exit with an error. Installing the texinfo package using
+  [Homebrew](https://brew.sh) will fix this. Be sure to follow the post-install instructions
+  to add its bin directory to your shell's PATH variable.
+
+- If you are running an Emacs distribution packaged as a macOS application. such as
+  the one available at https://emacsformacosx.com/, you'll need to add its executable
+  to your PATH before the system's default Emacs version. That project's
+  [Tips and Tricks](https://emacsformacosx.com/tips) page has detailed instructions.
 
 ## Contributing
 
