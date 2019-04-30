@@ -5,7 +5,7 @@
 (require 'haskell-cabal)
 
 (ert-deftest haskell-cabal-enum-targets-1 ()
-  "Test enumerating .cabal targets."
+  "Test enumerating .cabal targets for use by cabal-install."
   (with-temp-buffer
     (haskell-cabal-mode)
     (let ((scriptDir
@@ -13,8 +13,20 @@
              (or (symbol-file 'haskell-cabal-enum-targets-1)
                  (buffer-file-name)))))
       (setq default-directory (expand-file-name "test-data" scriptDir)))
-    (should (equal '("Test" "test-1" "bench-1" "bin-1")
+    (should (equal '("lib:Test" "test:test-1" "bench:bench-1" "exe:bin-1")
                    (haskell-cabal-enum-targets)))))
+
+(ert-deftest haskell-cabal-enum-targets-2 ()
+  "Test enumerating .cabal targets for use by stack."
+  (with-temp-buffer
+    (haskell-cabal-mode)
+    (let ((scriptDir
+           (file-name-directory
+            (or (symbol-file 'haskell-cabal-enum-targets-2)
+                (buffer-file-name)))))
+      (setq default-directory (expand-file-name "test-data" scriptDir)))
+    (should (equal '("Test:lib" "Test:test:test-1" "Test:bench:bench-1" "Test:exe:bin-1")
+                   (haskell-cabal-enum-targets 'stack-ghci)))))
 
 (ert-deftest haskell-cabal-get-field-1 ()
   (with-temp-buffer
@@ -302,6 +314,33 @@ Executable bin-1
                       Some.Other.Module
                       Some.Other.Other.Module
                       -- Foo, bar
+"))))
+
+(ert-deftest haskell-cabal-subsection-arrange-lines-dependencies ()
+  (with-temp-buffer
+    (insert "
+Executable bin-1
+    Main-Is:          TestParsing.hs
+    Build-Depends: aeson
+                 , text
+                 , base >= 4.8 && < 5
+                 , base64
+                 , bytestring
+                 , base-compat
+")
+    (haskell-cabal-mode)
+    (goto-char (point-min))
+    (search-forward "build-depends:")
+    (haskell-cabal-subsection-arrange-lines)
+    (should (string= (buffer-string) "
+Executable bin-1
+    Main-Is:          TestParsing.hs
+    Build-Depends: base >= 4.8 && < 5
+                 , aeson
+                 , base-compat
+                 , base64
+                 , bytestring
+                 , text
 "))))
 
 (ert-deftest haskell-cabal-add-dependency-01 ()

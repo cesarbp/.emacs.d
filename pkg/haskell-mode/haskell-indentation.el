@@ -517,15 +517,17 @@ and indent when all of the following are true:
   "Translation from UnicodeSyntax tokens to their ASCII representation.")
 
 (defconst haskell-indentation-toplevel-list
-  `(("module"   . haskell-indentation-module)
-    ("data"     . haskell-indentation-data)
-    ("type"     . haskell-indentation-data)
-    ("newtype"  . haskell-indentation-data)
-    ("import"   . haskell-indentation-import)
-    ("where"    . haskell-indentation-toplevel-where)
-    ("class"    . haskell-indentation-class-declaration)
-    ("instance" . haskell-indentation-class-declaration)
-    ("deriving" . haskell-indentation-deriving))
+  `(("module"    . haskell-indentation-module)
+    ("signature" . haskell-indentation-module)
+    ("data"      . haskell-indentation-data)
+    ("type"      . haskell-indentation-data)
+    ("newtype"   . haskell-indentation-data)
+    ("import"    . haskell-indentation-import)
+    ("foreign"   . haskell-indentation-foreign)
+    ("where"     . haskell-indentation-toplevel-where)
+    ("class"     . haskell-indentation-class-declaration)
+    ("instance"  . haskell-indentation-class-declaration)
+    ("deriving"  . haskell-indentation-deriving))
   "Alist of toplevel keywords with associated parsers.")
 
 (defconst haskell-indentation-type-list
@@ -739,6 +741,10 @@ For example
   "Parse import declaration."
   (haskell-indentation-with-starter #'haskell-indentation-expression))
 
+(defun haskell-indentation-foreign ()
+  "Parse foreign import declaration."
+  (haskell-indentation-with-starter (apply-partially #'haskell-indentation-expression '(value operator "import"))))
+
 (defun haskell-indentation-class-declaration ()
   "Parse class declaration."
   (haskell-indentation-with-starter
@@ -768,6 +774,8 @@ For example
   (haskell-indentation-with-starter
    (lambda ()
      (haskell-indentation-read-next-token)
+     (when (equal current-token 'layout-item)
+       (haskell-indentation-read-next-token))
      (when (string= current-token "(")
        (haskell-indentation-list
         #'haskell-indentation-module-export
@@ -925,13 +933,15 @@ parser.  If parsing ends here, set indentation to left-indent."
           '("if" "let" "do" "case" "\\" "(" "{" "[" "::"
             value operator no-following-token)))
 
-(defun haskell-indentation-expression ()
+(defun haskell-indentation-expression (&optional accepted-tokens)
   "Parse an expression until an unknown token is encountered."
   (catch 'return
     (let ((current-indent (current-column)))
+      (unless accepted-tokens
+        (setq accepted-tokens '(value operator)))
       (while t
         (cond
-         ((memq current-token '(value operator))
+         ((memq current-token accepted-tokens)
           (haskell-indentation-read-next-token))
          ((eq current-token 'end-tokens)
           (cond ((string= following-token "where")
@@ -1208,7 +1218,7 @@ line."
 
 (defun haskell-indentation-peek-token ()
   "Return token starting at point."
-  (cond ((looking-at "\\(if\\|then\\|else\\|let\\|in\\|mdo\\|rec\\|do\\|proc\\|case\\|of\\|where\\|module\\|deriving\\|import\\|data\\|type\\|newtype\\|class\\|instance\\)\\([^[:alnum:]'_]\\|$\\)")
+  (cond ((looking-at "\\(if\\|then\\|else\\|let\\|in\\|mdo\\|rec\\|do\\|proc\\|case\\|of\\|where\\|module\\|signature\\|deriving\\|import\\|data\\|type\\|newtype\\|class\\|instance\\)\\([^[:alnum:]'_]\\|$\\)")
          (match-string-no-properties 1))
         ((looking-at "[][(){}[,;]")
          (match-string-no-properties 0))
