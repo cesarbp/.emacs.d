@@ -64,7 +64,7 @@ https://github.com/rocky/emacs-test-unit release-0.01
 https://github.com/jyp/dante 1.5
 https://github.com/flycheck/flycheck 31
 https://github.com/jyp/lcr 1.1
-https://github.com/haskell/haskell-mode v16.1
+https://github.com/haskell/haskell-mode master
 https://github.com/purcell/exec-path-from-shell 1.12
 https://github.com/lunaryorn/pkg-info.el 0.6
 https://github.com/cask/epl 0.9
