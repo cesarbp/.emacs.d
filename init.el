@@ -230,6 +230,14 @@
 (add-to-list 'Info-default-directory-list haskell-mode-dir)
 (add-hook 'haskell-mode-hook 'dante-mode)
 (add-hook 'haskell-mode-hook 'flycheck-mode)
+;; put dante-company at the end of the company-backends list
+(defun remove-dante-company-from-head ()
+  (when (boundp 'company-backends)
+    (make-local-variable 'company-backends)
+    (setq company-backends (delete 'dante-company company-backends))
+    (add-to-list 'company-backends 'company-dabbrev)))
+(add-hook 'dante-mode-hook 'remove-dante-company-from-head)
+
 (condition-case nil
     (require 'haskell-mode-autoloads)
   (error (message "haskell mode files need to be generated, see github README of haskell-mode. Need to do 'make haskell-mode-autoloads.el'")))
