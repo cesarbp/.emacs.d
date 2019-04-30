@@ -221,9 +221,11 @@
 (global-set-key (kbd "C-<") 'mc/mark-previous-like-this)
 (global-set-key (kbd "C-c C-<") 'mc/mark-all-like-this)
 ;; Haskell
+(require 'epl)
+(require 'pkg-info)
+(require 'flycheck)
 (require 'lcr)
 (require 'haskell-mode)
-(require 'flycheck)
 (require 'dante)
 (defconst haskell-mode-dir (concat emacs-pkg-dir "/" "haskell-mode"))
 (add-to-list 'load-path haskell-mode-dir)
