@@ -237,7 +237,8 @@
   (when (boundp 'company-backends)
     (make-local-variable 'company-backends)
     (setq company-backends (delete 'dante-company company-backends))
-    (add-to-list 'company-backends 'company-dabbrev)))
+    ;; (add-to-list 'company-backends 'dante-company)
+    ))
 (add-hook 'dante-mode-hook 'remove-dante-company-from-head)
 
 (condition-case nil
