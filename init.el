@@ -50,6 +50,11 @@
 ;; (load (concat user-emacs-directory "my-autoload.el"))
 
 ;;; --- Packages --- ;;;
+
+;; exec-path-from-shell - make sure env looks the same inside emacs and in the user's shell in OSX
+(require 'exec-path-from-shell)
+(when (memq window-system '(mac ns x))
+  (exec-path-from-shell-initialize))
 (require 'eldoc)
 (require 'better-defaults)
 (require 'smex)
@@ -241,9 +246,11 @@
     ))
 (add-hook 'dante-mode-hook 'remove-dante-company-from-head)
 
+
+
 (condition-case nil
     (require 'haskell-mode-autoloads)
-  (error (message "haskell mode files need to be generated, see github README of haskell-mode. Need to do 'make haskell-mode-autoloads.el'")))
+  (error (message "WARNING: haskell mode files need to be generated, see github README of haskell-mode. Need to do 'make haskell-mode-autoloads.el'")))
 (setq flymake-no-changes-timeout nil)
 (setq flymake-start-syntax-check-on-newline nil)
 (setq flycheck-check-syntax-automatically '(save mode-enabled))
@@ -254,10 +261,31 @@
 (winner-mode 1)
 (put 'erase-buffer 'disabled nil)
 (setq shell-command-switch "-ic")
-;; exec-path-from-shell
-(require 'exec-path-from-shell)
-(when (memq window-system '(mac ns x))
-  (exec-path-from-shell-initialize))
+;; w3m for haddock - requires w3m to be installed
+(defun setup-w3m ()
+  
+  (setq w3m-mode-map (make-sparse-keymap))
+
+  (define-key w3m-mode-map (kbd "RET") 'w3m-view-this-url)
+  (define-key w3m-mode-map (kbd "q") 'bury-buffer)
+  (define-key w3m-mode-map (kbd "<mouse-1>") 'w3m-maybe-url)
+  (define-key w3m-mode-map [f5] 'w3m-reload-this-page)
+  (define-key w3m-mode-map (kbd "C-c C-d") 'haskell-w3m-open-haddock)
+  (define-key w3m-mode-map (kbd "M-<left>") 'w3m-view-previous-page)
+  (define-key w3m-mode-map (kbd "M-<right>") 'w3m-view-next-page)
+  (define-key w3m-mode-map (kbd "M-.") 'w3m-haddock-find-tag))
+
+(defun w3m-maybe-url ()
+  (interactive)
+  (if (or (equal '(w3m-anchor) (get-text-property (point) 'face))
+          (equal '(w3m-arrived-anchor) (get-text-property (point) 'face)))
+      (w3m-view-this-url)))
+
+;; (condition-case err
+;;     (progn (require 'w3m)
+;;            (setup-w3m))
+;;   (error (message "WARNING: %s" (error-message-string err))))
+
 ;; sql 4 spaces
 (add-hook 'sql-mode-hook
           (lambda ()
