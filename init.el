@@ -125,9 +125,11 @@
                         (registers . 5)))
 ;; Color theme
 (require 'color-theme)
-(add-to-list 'custom-theme-load-path (concat emacs-pkg-dir "/atom-one-dark-theme/"))
-(add-to-list 'custom-theme-load-path (concat emacs-pkg-dir "/dracula-theme/"))
-(load-theme 'dracula t)
+;; (add-to-list 'custom-theme-load-path (concat emacs-pkg-dir "/atom-one-dark-theme/"))
+;; (add-to-list 'custom-theme-load-path (concat emacs-pkg-dir "/dracula-theme/"))
+(require 'color-theme-sanityinc-tomorrow)
+(load-theme 'sanityinc-tomorrow-eighties t)
+
 ;; org mode
 (define-key global-map "\C-cl" 'org-store-link)
 (define-key global-map "\C-ca" 'org-agenda)
@@ -156,7 +158,6 @@
 ;; PHP mode
 (require 'php-mode)
 
-
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -170,7 +171,8 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(default ((t (:inherit nil :stipple nil :background "#282C34" :foreground "#ABB2BF" :inverse-video nil :box nil :strike-through nil :overline nil :underline nil :slant normal :weight normal :height 90 :width normal :foundry "DAMA" :family "Source Code Pro")))))
+ '(default ((t (:height 90 :width normal :foundry "DAMA" :family "Source Code Pro")))))
+
 
 ;; smart mode line
 (require 'rich-minority)
@@ -283,11 +285,7 @@
 ;; Mac OS config
 (when (string-equal system-type "darwin")
     (custom-set-faces
-     ;; custom-set-faces was added by Custom.
-     ;; If you edit it by hand, you could mess it up, so be careful.
-     ;; Your init file should contain only one such instance.
-     ;; If there is more than one, they won't work right.
-     '(default ((t (:inherit nil :stipple nil :background "#282C34" :foreground "#ABB2BF" :inverse-video nil :box nil :strike-through nil :overline nil :underline nil :slant normal :weight normal :height 110 :width normal :foundry nil :family "SF Mono")))))
+     '(default ((t (:height 110 :family "SF Mono")))))
     (setq mac-option-modifier nil)
     (setq mac-command-modifier 'meta)
     (setq ring-bell-function
@@ -297,3 +295,7 @@
           (run-with-idle-timer 0.1 nil
                                (lambda (bg) (set-face-background 'mode-line bg))
                                orig-bg)))))
+
+(when (not (string-equal system-type "darwin"))
+  )
+
