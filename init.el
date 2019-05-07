@@ -97,12 +97,6 @@
 (add-hook 'scheme-mode-hook           #'enable-paredit-mode)
 ;; idle-highlight-mode  https://github.com/nonsequitur/idle-highlight-mode
 (require 'idle-highlight-mode)
-(defun idle-hl-mode-hook ()
-  (make-local-variable 'column-number-mode)
-  (column-number-mode t)
-  (if window-system (hl-line-mode t))
-  (idle-highlight-mode t))
-(add-hook 'emacs-lisp-mode-hook 'idle-hl-mode-hook)
 ;; End idle-highlight-mode
 (require 'find-file-in-project)  ; https://github.com/technomancy/find-file-in-project
 ;; elisp slime nav
@@ -267,6 +261,19 @@
 (winner-mode 1)
 (put 'erase-buffer 'disabled nil)
 (setq shell-command-switch "-ic")
+(defun general-coding-hook ()
+  (make-local-variable 'column-number-mode)
+  (column-number-mode t)
+  (idle-highlight-mode t)
+  (if window-system (hl-line-mode t))
+  ;; Add easier to see foreground for dark themes
+  ;; Makes it play better with idle-highlight too
+  (set-face-attribute 'hl-line nil :distant-foreground "#00FFFF")
+  )
+(add-hook 'emacs-lisp-mode-hook 'general-coding-hook)
+(add-hook 'python-mode-hook 'general-coding-hook)
+(add-hook 'php-mode-hook 'general-coding-hook)
+(add-hook 'haskell-mode-hook 'general-coding-hook)
 
 ;; sql 4 spaces
 (add-hook 'sql-mode-hook
