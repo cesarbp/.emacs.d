@@ -132,7 +132,8 @@
 ;; Color theme
 (require 'color-theme)
 (add-to-list 'custom-theme-load-path (concat emacs-pkg-dir "/atom-one-dark-theme/"))
-(load-theme 'atom-one-dark t)
+(add-to-list 'custom-theme-load-path (concat emacs-pkg-dir "/dracula-theme/"))
+(load-theme 'dracula t)
 ;; org mode
 (define-key global-map "\C-cl" 'org-store-link)
 (define-key global-map "\C-ca" 'org-agenda)
