@@ -68,7 +68,7 @@
 ; disable ido faces to see flx highlights.
 (setq ido-enable-flex-matching t)
 (setq ido-use-faces nil)
-;; icons
+;; icons - Note: do M-x all-the-icons-install-fonts
 (require 'memoize)
 (require 'all-the-icons)
 ;; Neotree
