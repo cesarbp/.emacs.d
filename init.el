@@ -68,7 +68,13 @@
 ; disable ido faces to see flx highlights.
 (setq ido-enable-flex-matching t)
 (setq ido-use-faces nil)
-
+;; icons
+(require 'memoize)
+(require 'all-the-icons)
+;; Neotree
+(require 'neotree)
+(global-set-key [f8] 'neotree-toggle)
+(setq neo-theme (if (display-graphic-p) 'icons 'arrow))
 ;; magit
 ; dash already loaded previously
 (require 'async)
