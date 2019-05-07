@@ -244,13 +244,14 @@
 (add-hook 'haskell-mode-hook 'dante-mode)
 (add-hook 'haskell-mode-hook 'flycheck-mode)
 ;; put dante-company at the end of the company-backends list
-(defun remove-dante-company-from-head ()
+(defun dante-company-backends ()
   (when (boundp 'company-backends)
     (make-local-variable 'company-backends)
     (setq company-backends (delete 'dante-company company-backends))
     ;; (add-to-list 'company-backends 'dante-company)
+    (add-to-list 'company-backends 'company-dabbrev-code)
     ))
-(add-hook 'dante-mode-hook 'remove-dante-company-from-head)
+(add-hook 'dante-mode-hook 'dante-company-backends)
 
 (condition-case nil
     (require 'haskell-mode-autoloads)
