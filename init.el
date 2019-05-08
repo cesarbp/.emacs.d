@@ -285,7 +285,7 @@
 ;; Mac OS config
 (when (string-equal system-type "darwin")
     (custom-set-faces
-     '(default ((t (:height 110 :family "SF Mono")))))
+     '(default ((t (:height 122 :family "SF Mono")))))
     (setq mac-option-modifier nil)
     (setq mac-command-modifier 'meta)
     (setq ring-bell-function
