@@ -256,6 +256,7 @@
 (setq flymake-no-changes-timeout nil)
 (setq flymake-start-syntax-check-on-newline nil)
 (setq flycheck-check-syntax-automatically '(save mode-enabled))
+(require 'haskell-snippets)
 ;; custom
 (setq inhibit-spash-screen t)
 (setq inhibit-startup-message t)
