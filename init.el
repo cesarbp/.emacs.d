@@ -276,6 +276,7 @@
 (add-hook 'python-mode-hook 'general-coding-hook)
 (add-hook 'php-mode-hook 'general-coding-hook)
 (add-hook 'haskell-mode-hook 'general-coding-hook)
+(global-set-key (kbd "C-c o") 'occur)
 
 ;; sql 4 spaces
 (add-hook 'sql-mode-hook
