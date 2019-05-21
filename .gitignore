@@ -13,3 +13,4 @@ projectile-bookmarks.eld
 .emacs.desktop*
 tramp
 .mc-lists.el
+.yas-compiled-snippets.el
