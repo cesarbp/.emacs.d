@@ -259,8 +259,8 @@
 (require 'haskell-snippets)
 ;; SmartParens
 (require 'smartparens-config)
-(defun smartparens-vs-paredit ()
-  (when (not (bound-and-true-p paredit-mode))
+(defun smartparens-non-lisp ()
+  (when (not (member major-mode '(emacs-lisp-mode)))
     (smartparens-mode)))
 ;; custom
 (setq inhibit-spash-screen t)
@@ -278,7 +278,7 @@
   ;; Add easier to see foreground for dark themes
   ;; Makes it play better with idle-highlight too
   (set-face-attribute 'hl-line nil :distant-foreground "#00FFFF")
-  (smartparens-vs-paredit)
+  (smartparens-non-lisp)
   )
 (add-hook 'emacs-lisp-mode-hook 'general-coding-hook)
 (add-hook 'python-mode-hook 'general-coding-hook)
