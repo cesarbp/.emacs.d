@@ -257,6 +257,11 @@
 (setq flymake-start-syntax-check-on-newline nil)
 (setq flycheck-check-syntax-automatically '(save mode-enabled))
 (require 'haskell-snippets)
+;; SmartParens
+(require 'smartparens-config)
+(defun smartparens-vs-paredit ()
+  (when (not (bound-and-true-p paredit-mode))
+    (smartparens-mode)))
 ;; custom
 (setq inhibit-spash-screen t)
 (setq inhibit-startup-message t)
@@ -264,6 +269,7 @@
 (winner-mode 1)
 (put 'erase-buffer 'disabled nil)
 (setq shell-command-switch "-ic")
+(global-set-key (kbd "C-c o") 'occur)
 (defun general-coding-hook ()
   (make-local-variable 'column-number-mode)
   (column-number-mode t)
@@ -272,12 +278,15 @@
   ;; Add easier to see foreground for dark themes
   ;; Makes it play better with idle-highlight too
   (set-face-attribute 'hl-line nil :distant-foreground "#00FFFF")
+  (smartparens-vs-paredit)
   )
 (add-hook 'emacs-lisp-mode-hook 'general-coding-hook)
 (add-hook 'python-mode-hook 'general-coding-hook)
 (add-hook 'php-mode-hook 'general-coding-hook)
 (add-hook 'haskell-mode-hook 'general-coding-hook)
-(global-set-key (kbd "C-c o") 'occur)
+(add-hook 'html-mode-hook 'general-coding-hook)
+
+
 
 ;; sql 4 spaces
 (add-hook 'sql-mode-hook
