@@ -251,7 +251,7 @@
 
 (condition-case nil
     (require 'haskell-mode-autoloads)
-  (error (warn "Haskell mode files need to be generated, see github README of haskell-mode. Need to do 'make haskell-mode-autoloads.el'")))
+  (error (warn "Haskell mode files need to be generated, see github README of haskell-mode. Need to do 'make haskell-mode-autoloads.el' If it fails try rm haskell-mode-autoloads.el first if it exists")))
 (setq flymake-no-changes-timeout nil)
 (setq flymake-start-syntax-check-on-newline nil)
 (setq flycheck-check-syntax-automatically '(save mode-enabled))
