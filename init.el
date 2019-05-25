@@ -284,9 +284,8 @@
 (add-hook 'php-mode-hook 'general-coding-hook)
 (add-hook 'haskell-mode-hook 'general-coding-hook)
 (add-hook 'html-mode-hook 'general-coding-hook)
-
-
-
+(when (display-graphic-p)
+  (setq initial-frame-alist '((width . 90) (height . 55))))
 ;; sql 4 spaces
 (add-hook 'sql-mode-hook
           (lambda ()
