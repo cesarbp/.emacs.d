@@ -288,8 +288,8 @@
 (setq gc-cons-threshold 20000000)  ; try this as per https://github.com/lewang/flx
 (require 're-builder)
 (setq reb-re-syntax 'string)
-
-
+(when (display-graphic-p)
+  (setq initial-frame-alist '((width . 90) (height . 55))))
 ;; sql 4 spaces
 (add-hook 'sql-mode-hook
           (lambda ()
