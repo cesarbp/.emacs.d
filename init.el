@@ -80,6 +80,7 @@
 (ido-everywhere 1)
 (ido-ubiquitous-mode 1)
 (flx-ido-mode 1)
+
 ; disable ido faces to see flx highlights.
 (setq ido-enable-flex-matching t)
 (setq ido-use-faces nil)
@@ -284,7 +285,9 @@
 (add-hook 'php-mode-hook 'general-coding-hook)
 (add-hook 'haskell-mode-hook 'general-coding-hook)
 (add-hook 'html-mode-hook 'general-coding-hook)
-
+(setq gc-cons-threshold 20000000)  ; try this as per https://github.com/lewang/flx
+(require 're-builder)
+(setq reb-re-syntax 'string)
 
 
 ;; sql 4 spaces
