@@ -285,6 +285,8 @@
 (add-hook 'php-mode-hook 'general-coding-hook)
 (add-hook 'haskell-mode-hook 'general-coding-hook)
 (add-hook 'html-mode-hook 'general-coding-hook)
+(add-hook 'web-mode-hook 'general-coding-hook)
+(add-hook 'js2-mode-hook 'general-coding-hook)
 (setq gc-cons-threshold 20000000)  ; try this as per https://github.com/lewang/flx
 (require 're-builder)
 (setq reb-re-syntax 'string)
