@@ -32,37 +32,40 @@
   (let ((do-glob (lambda (glob) (f-glob (f-join root glob)))))
     (apply 'nconc (mapcar do-glob globs))))
 
+(defun module-name (dir)
+  (replace-regexp-in-string
+   "\.el$"
+   ""
+   (car (last (split-string dir "/")))))
+
 ;; now add all my pkg lisp directories
 (let* ((globs '("*" "*/lisp"))
        (dirs (expand-all-globs emacs-pkg-dir globs)))
   (dolist (dir dirs)
     (when (file-directory-p dir)
-      (add-to-list 'load-path dir))))
+      ;(message dir)
+      (add-to-list 'load-path dir)
+      (let ((module (module-name dir)))
+        (message module)
+        (autoload (intern module) (concat module ".el"))
+        ))))
 
 ;; finally put my own site-lisp at the front of `load-path'
 (add-to-list 'load-path (concat user-emacs-directory "site-lisp"))
+;; from https://github.com/technomancy/emacs-starter-kit
+(defun pnh-reinit-libs ()
+  (interactive)
+  (let ((generated-autoload-file (concat user-emacs-directory "my-autoload.el")))
+    (dolist (d (directory-files (concat user-emacs-directory "pkg") t "^[^\.]"))
+      (when (file-directory-p d)
+        (dolist (f (directory-files d t "\\.el$"))
+          (byte-compile-file f))
+        (update-directory-autoloads d)))))
 
-;; we will use use-package to load everything else
-;; (require 'use-package)
+(when (not (file-exists-p (concat user-emacs-directory "my-autoload.el")))
+  (pnh-reinit-libs))
 
-;; (defun pnh-reinit-libs ()
-;;   (interactive)
-;;   (let ((generated-autoload-file (concat user-emacs-directory "my-autoload.el")))
-;;     (dolist (d (directory-files (concat user-emacs-directory "pkg") t "^[^\.]"))
-;;       (if (file-directory-p d)
-;; 	  (progn
-;; 	    (dolist (f (directory-files d t "\\.el$"))
-;;               (byte-compile-file f))
-;; 	    (update-directory-autoloads d))))))
-
-;; (dolist (l (directory-files (concat user-emacs-directory "pkg") nil "^[^\.]"))
-;;   (add-to-list 'load-path (concat user-emacs-directory "pkg/" l))
-;;   (autoload (intern l) (concat l ".el")))
-
-;; (when (not (file-exists-p (concat user-emacs-directory "my-autoload.el")))
-;;   (pnh-reinit-libs))
-
-;; (load (concat user-emacs-directory "my-autoload.el"))
+(load (concat user-emacs-directory "my-autoload.el"))
 
 ;;; --- Packages --- ;;;
 
@@ -80,8 +83,7 @@
 (ido-everywhere 1)
 (ido-ubiquitous-mode 1)
 (flx-ido-mode 1)
-
-; disable ido faces to see flx highlights.
+;; disable ido faces to see flx highlights.
 (setq ido-enable-flex-matching t)
 (setq ido-use-faces nil)
 ;; icons - Note: do M-x all-the-icons-install-fonts
@@ -163,17 +165,16 @@
 (add-hook 'after-init-hook 'global-company-mode)
 ;; Web mode
 (require 'web-mode)
-;(add-to-list 'auto-mode-alist '("\\.phtml\\'" . web-mode))
-;(add-to-list 'auto-mode-alist '("\\.tpl\\.php\\'" . web-mode))
 (add-to-list 'auto-mode-alist '("\\.html?\\'" . web-mode))
 (add-to-list 'auto-mode-alist '("\\.j2\\'" . web-mode))
 (setq web-mode-enable-current-element-highlight t)
 (setq web-mode-enable-current-column-highlight t)
 (setq web-mode-engines-alist
       '(("jinja"    . "\\.j2\\'")))
+;(add-to-list 'auto-mode-alist '("\\.phtml\\'" . web-mode))
+;(add-to-list 'auto-mode-alist '("\\.tpl\\.php\\'" . web-mode))
 ;; PHP mode
 (require 'php-mode)
-
 ;; smart mode line
 (require 'rich-minority)
 (require 'smart-mode-line)
