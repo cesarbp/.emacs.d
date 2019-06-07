@@ -65,9 +65,9 @@
 (require 'exec-path-from-shell)
 (when (memq window-system '(mac ns x))
   (exec-path-from-shell-initialize))
-(require 'eldoc)
+;; (require 'eldoc)
 (require 'better-defaults)
-(require 'smex)
+;; (require 'smex)
 ;; ido
 (require 'ido-completing-read+)
 (require 'flx-ido)
@@ -85,34 +85,27 @@
 (require 'neotree)
 (global-set-key [f8] 'neotree-toggle)
 (setq neo-theme (if (display-graphic-p) 'icons 'arrow))
-;; magit
-; dash already loaded previously
-;; (require 'async)
-;; (require 'magit-popup)
-;; (require 'ghub)
-;; (require 'with-editor)
-;; (require 'magit)
+;;; magit
+;; Magit has to be compiled manually for the autoloads to work
+;; Follow the instructions at: https://magit.vc/manual/magit.html#Installing-from-the-Git-Repository
+;; Create a file ~/.emacs.d/pkg/magit/config.mk with the contents:
+;; LOAD_PATH  = -L ~/.emacs.d/pkg/magit/lisp
+;; LOAD_PATH += -L ~/.emacs.d/pkg/dash.el
+;; LOAD_PATH += -L ~/.emacs.d/pkg/hydra
+;; LOAD_PATH += -L ~/.emacs.d/pkg/transient
+;; LOAD_PATH += -L ~/.emacs.d/pkg/with-editor
+;; LOAD_PATH += -L ~/.emacs.d/pkg/magit-popup
+;; LOAD_PATH += -L ~/.emacs.d/pkg/ghub
+;; And then run `make` inside magit's directory
+(when (file-exists-p (concat emacs-pkg-dir "/magit/lisp/magit-autoloads.el"))
+  (load (concat emacs-pkg-dir "/magit/lisp/magit-autoloads.el")))
 
 (with-eval-after-load 'info
   (info-initialize)
   (add-to-list 'Info-directory-list
 	       (concat emacs-pkg-dir "/magit/Documentation/")))
-;; Paredit
-(autoload 'enable-paredit-mode "paredit" "Turn on pseudo-structural editing of Lisp code." t)
-(add-hook 'emacs-lisp-mode-hook       #'enable-paredit-mode)
-(add-hook 'eval-expression-minibuffer-setup-hook #'enable-paredit-mode)
-(add-hook 'ielm-mode-hook             #'enable-paredit-mode)
-(add-hook 'lisp-mode-hook             #'enable-paredit-mode)
-(add-hook 'lisp-interaction-mode-hook #'enable-paredit-mode)
-(add-hook 'scheme-mode-hook           #'enable-paredit-mode)
-;; idle-highlight-mode  https://github.com/nonsequitur/idle-highlight-mode
-(require 'idle-highlight-mode)
-;; End idle-highlight-mode
-(require 'find-file-in-project)  ; https://github.com/technomancy/find-file-in-project
-;; elisp slime nav
-(require 'elisp-slime-nav)
-(dolist (hook '(emacs-lisp-mode-hook ielm-mode-hook))
-  (add-hook hook 'elisp-slime-nav-mode))
+
+;(require 'find-file-in-project)  ; https://github.com/technomancy/find-file-in-project
 ;; Undo Tree
 (require 'undo-tree)
 (global-undo-tree-mode)
@@ -121,11 +114,11 @@
 (window-number-mode)
 (window-number-meta-mode)
 ;; projectile
-(require 'projectile)
-(projectile-mode +1)
-(define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map)
+(eval-after-load 'projectile
+  '(progn
+     (projectile-mode +1)
+     (define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map)))
 ;; dashboard
-(require 'page-break-lines)
 (require 'dashboard)
 (dashboard-setup-startup-hook)
 (setq dashboard-items '((recents  . 15)
@@ -133,86 +126,14 @@
                         (projects . 5)
                         (agenda . 5)
                         (registers . 5)))
-;; Color theme
-(require 'color-theme)
-;; (add-to-list 'custom-theme-load-path (concat emacs-pkg-dir "/atom-one-dark-theme/"))
-;; (add-to-list 'custom-theme-load-path (concat emacs-pkg-dir "/dracula-theme/"))
-(require 'color-theme-sanityinc-tomorrow)
-(load-theme 'sanityinc-tomorrow-eighties t)
-
 ;; org mode
 (define-key global-map "\C-cl" 'org-store-link)
 (define-key global-map "\C-ca" 'org-agenda)
 (setq org-log-done t)
 (add-hook 'org-mode-hook (lambda () (setq truncate-lines nil)))
-;; nix mode
-(require 'nix-mode)
-;; highlight current line number
-(require 'hlinum)
-(hlinum-activate)
-(global-linum-mode)
-(set-face-foreground 'linum "dim gray")
-;; company
-(require 'company)
-(add-hook 'after-init-hook 'global-company-mode)
-;; Web mode
-(require 'web-mode)
-(add-to-list 'auto-mode-alist '("\\.html?\\'" . web-mode))
-(add-to-list 'auto-mode-alist '("\\.j2\\'" . web-mode))
-(setq web-mode-enable-current-element-highlight t)
-(setq web-mode-enable-current-column-highlight t)
-(setq web-mode-engines-alist
-      '(("jinja"    . "\\.j2\\'")))
-;(add-to-list 'auto-mode-alist '("\\.phtml\\'" . web-mode))
-;(add-to-list 'auto-mode-alist '("\\.tpl\\.php\\'" . web-mode))
-;; PHP mode
-;(require 'php-mode)
 ;; smart mode line
-(require 'rich-minority)
 (require 'smart-mode-line)
 (sml/setup)
-;; python
-(eval-after-load 'elpy
-  '(progn (elpy-enable)
-          (setq python-shell-interpreter "ipython"
-                python-shell-interpreter-args "-i --simple-prompt")
-          (add-to-list 'python-shell-completion-native-disabled-interpreters
-                       "jupyter")
-          (require 'py-autopep8)
-          (add-hook 'elpy-mode-hook 'py-autopep8-enable-on-save)))
-;; (setq python-shell-interpreter "python"
-;;       python-shell-interpreter-args "-i"
-;;       python-shell-prompt-detect-failure-warning nil)
-;; (setq python-shell-interpreter "jupyter"
-;;       python-shell-interpreter-args "console --simple-prompt"
-;;       python-shell-prompt-detect-failure-warning nil)
-
-
-;; javascript
-;;(require 'indium)
-(eval-after-load 'js2-mode
-  '(progn (require 'js2-refactor)
-          (require 'xref-js2)  ; requires the silversearcher (ag)
-          (js2r-add-keybindings-with-prefix "C-c C-r")
-          (define-key js2-mode-map (kbd "C-k") #'js2r-kill)
-          ;; js-mode (which js2 is based on) binds "M-." which conflicts with xref, so
-          ;; unbind it.
-          (define-key js-mode-map (kbd "M-.") nil)
-          ))
-(add-to-list 'auto-mode-alist '("\\.js\\'" . js2-mode))
-(add-to-list 'auto-mode-alist '("\\.mjs\\'" . js2-mode))
-;; Better imenu
-(add-hook 'js2-mode-hook #'js2-imenu-extras-mode)
-(add-hook 'js2-mode-hook (lambda ()
-                           (add-hook 'xref-backend-functions #'xref-js2-xref-backend nil t)))
-(add-hook 'js2-mode-hook #'js2-refactor-mode)
-
-
-
-;; yasnippet
-(eval-after-load 'yasnippet
-  '(progn (require 'haskell-snippets)
-          (yas-global-mode 1)))
 ;; buffer-move
 (require 'buffer-move)
 (global-set-key (kbd "<C-s-up>")     'buf-move-up)
@@ -220,11 +141,6 @@
 (global-set-key (kbd "<C-s-left>")   'buf-move-left)
 (global-set-key (kbd "<C-s-right>")  'buf-move-right)
 ;; multiple cursors
-(require 'multiple-cursors)
-(global-set-key (kbd "C-S-c C-S-c") 'mc/edit-lines)
-(global-set-key (kbd "C->") 'mc/mark-next-like-this)
-(global-set-key (kbd "C-<") 'mc/mark-previous-like-this)
-(global-set-key (kbd "C-c C-<") 'mc/mark-all-like-this)
 ;; Haskell
 (require 'epl)
 (require 'pkg-info)
@@ -343,7 +259,7 @@
 (require 're-builder)
 (setq reb-re-syntax 'string)
 (when (display-graphic-p)
-  (setq initial-frame-alist '((width . 90) (height . 55))))
+  (setq initial-frame-alist '((width . 180) (height . 55))))
 ;; sql 4 spaces
 (add-hook 'sql-mode-hook
           (lambda ()
