@@ -20,9 +20,8 @@
 
 ;; this is where all subtree packages are
 (defconst emacs-pkg-dir (concat user-emacs-directory "pkg"))
+(defconst autoloads-file (concat emacs-pkg-dir "/my-autoload.el"))
 
-;; load up f, and its dependencies s and dash, so we can use `f-glob'
-;; and `f-join'
 (dolist (pkg '("f.el" "dash.el" "s.el"))
   (add-to-list 'load-path (concat emacs-pkg-dir "/" pkg)))
 (require 'f) (require 's) (require 'dash)
@@ -32,41 +31,33 @@
   (let ((do-glob (lambda (glob) (f-glob (f-join root glob)))))
     (apply 'nconc (mapcar do-glob globs))))
 
-(defun module-name (dir)
-  (replace-regexp-in-string
-   "\.el$"
-   ""
-   (car (last (split-string dir "/")))))
-
 ;; now add all my pkg lisp directories
 (let* ((globs '("*" "*/lisp"))
        (dirs (expand-all-globs emacs-pkg-dir globs)))
   (dolist (dir dirs)
     (when (file-directory-p dir)
-      ;(message dir)
-      (add-to-list 'load-path dir)
-      (let ((module (module-name dir)))
-        (message module)
-        (autoload (intern module) (concat module ".el"))
-        ))))
+      (add-to-list 'load-path dir))))
 
-;; finally put my own site-lisp at the front of `load-path'
-(add-to-list 'load-path (concat user-emacs-directory "site-lisp"))
 ;; from https://github.com/technomancy/emacs-starter-kit
-(defun pnh-reinit-libs ()
+(defun reinit-pkgs ()
   (interactive)
-  (let ((generated-autoload-file (concat user-emacs-directory "my-autoload.el")))
-    (dolist (d (directory-files (concat user-emacs-directory "pkg") t "^[^\.]"))
+  (let ((generated-autoload-file autoloads-file))
+    (dolist (d (directory-files emacs-pkg-dir t "^[^\.]"))
       (when (file-directory-p d)
         (dolist (f (directory-files d t "\\.el$"))
           (byte-compile-file f))
         (update-directory-autoloads d)))))
 
-(when (not (file-exists-p (concat user-emacs-directory "my-autoload.el")))
-  (pnh-reinit-libs)
+(when (not (file-exists-p autoloads-file))
+  (reinit-pkgs)
   )
 
-(load (concat user-emacs-directory "my-autoload.el"))
+(add-to-list 'load-path emacs-pkg-dir)
+
+(load autoloads-file)
+
+(mapc 'load (directory-files (concat user-emacs-directory "cbp")
+                             t "^[^#].*el$"))
 
 ;;; --- Packages --- ;;;
 
@@ -88,25 +79,25 @@
 (setq ido-enable-flex-matching t)
 (setq ido-use-faces nil)
 ;; icons - Note: do M-x all-the-icons-install-fonts
-(require 'memoize)
-(require 'all-the-icons)
+;(require 'memoize)
+;(require 'all-the-icons)
 ;; Neotree
 (require 'neotree)
 (global-set-key [f8] 'neotree-toggle)
 (setq neo-theme (if (display-graphic-p) 'icons 'arrow))
 ;; magit
 ; dash already loaded previously
-(require 'async)
-(require 'magit-popup)
-(require 'ghub)
-(require 'with-editor)
-(require 'magit)
+;; (require 'async)
+;; (require 'magit-popup)
+;; (require 'ghub)
+;; (require 'with-editor)
+;; (require 'magit)
+
 (with-eval-after-load 'info
   (info-initialize)
   (add-to-list 'Info-directory-list
 	       (concat emacs-pkg-dir "/magit/Documentation/")))
 ;; Paredit
-(require 'paredit)
 (autoload 'enable-paredit-mode "paredit" "Turn on pseudo-structural editing of Lisp code." t)
 (add-hook 'emacs-lisp-mode-hook       #'enable-paredit-mode)
 (add-hook 'eval-expression-minibuffer-setup-hook #'enable-paredit-mode)
@@ -175,7 +166,7 @@
 ;(add-to-list 'auto-mode-alist '("\\.phtml\\'" . web-mode))
 ;(add-to-list 'auto-mode-alist '("\\.tpl\\.php\\'" . web-mode))
 ;; PHP mode
-(require 'php-mode)
+;(require 'php-mode)
 ;; smart mode line
 (require 'rich-minority)
 (require 'smart-mode-line)
