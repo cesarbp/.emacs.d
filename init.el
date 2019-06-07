@@ -62,15 +62,15 @@
 ;;; --- Packages --- ;;;
 
 ;; exec-path-from-shell - make sure env looks the same inside emacs and in the user's shell in OSX
-(require 'exec-path-from-shell)
+;(require 'exec-path-from-shell)
 (when (memq window-system '(mac ns x))
   (exec-path-from-shell-initialize))
-;; (require 'eldoc)
+
 (require 'better-defaults)
-;; (require 'smex)
+
 ;; ido
-(require 'ido-completing-read+)
-(require 'flx-ido)
+;(require 'ido-completing-read+)
+;(require 'flx-ido)
 (ido-mode 1)
 (ido-everywhere 1)
 (ido-ubiquitous-mode 1)
@@ -82,7 +82,7 @@
 ;(require 'memoize)
 ;(require 'all-the-icons)
 ;; Neotree
-(require 'neotree)
+;(require 'neotree)
 (global-set-key [f8] 'neotree-toggle)
 (setq neo-theme (if (display-graphic-p) 'icons 'arrow))
 ;;; magit
@@ -107,7 +107,7 @@
 
 ;(require 'find-file-in-project)  ; https://github.com/technomancy/find-file-in-project
 ;; Undo Tree
-(require 'undo-tree)
+;(require 'undo-tree)
 (global-undo-tree-mode)
 ;; window number
 (require 'window-number)
@@ -119,7 +119,7 @@
      (projectile-mode +1)
      (define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map)))
 ;; dashboard
-(require 'dashboard)
+;(require 'dashboard)
 (dashboard-setup-startup-hook)
 (setq dashboard-items '((recents  . 15)
                         (bookmarks . 5)
@@ -132,49 +132,16 @@
 (setq org-log-done t)
 (add-hook 'org-mode-hook (lambda () (setq truncate-lines nil)))
 ;; smart mode line
-(require 'smart-mode-line)
+;(require 'smart-mode-line)
 (sml/setup)
 ;; buffer-move
-(require 'buffer-move)
+;(require 'buffer-move)
 (global-set-key (kbd "<C-s-up>")     'buf-move-up)
 (global-set-key (kbd "<C-s-down>")   'buf-move-down)
 (global-set-key (kbd "<C-s-left>")   'buf-move-left)
 (global-set-key (kbd "<C-s-right>")  'buf-move-right)
 ;; multiple cursors
-;; Haskell
-(require 'epl)
-(require 'pkg-info)
-(require 'flycheck)
-(require 'lcr)
-(require 'haskell-mode)
-(require 'dante)
-(defconst haskell-mode-dir (concat emacs-pkg-dir "/" "haskell-mode"))
-(add-to-list 'load-path haskell-mode-dir)
-(add-to-list 'Info-default-directory-list haskell-mode-dir)
-(add-hook 'haskell-mode-hook 'dante-mode)
-(add-hook 'haskell-mode-hook 'flycheck-mode)
-;; put dante-company at the end of the company-backends list
-(defun dante-company-backends ()
-  (when (boundp 'company-backends)
-    (make-local-variable 'company-backends)
-    (setq company-backends (delete 'dante-company company-backends))
-    ;; (add-to-list 'company-backends 'dante-company)
-    (add-to-list 'company-backends 'company-dabbrev-code)
-    ))
-(add-hook 'dante-mode-hook 'dante-company-backends)
 
-(condition-case nil
-    (require 'haskell-mode-autoloads)
-  (error (warn "Haskell mode files need to be generated, see github README of haskell-mode. Need to do 'make haskell-mode-autoloads.el' If it fails try rm haskell-mode-autoloads.el first if it exists")))
-(setq flymake-no-changes-timeout nil)
-(setq flymake-start-syntax-check-on-newline nil)
-(setq flycheck-check-syntax-automatically '(save mode-enabled))
-(require 'haskell-snippets)
-;; SmartParens
-(require 'smartparens-config)
-(defun smartparens-non-lisp ()
-  (when (not (member major-mode '(emacs-lisp-mode)))
-    (smartparens-mode)))
 ;; Erc
 ;; stolen from https://github.com/technomancy/dotfiles/blob/master/.emacs.d/phil/my-erc.el
 (setq erc-prompt ">"
@@ -279,3 +246,4 @@
 
 (when (not (string-equal system-type "darwin"))
   )
+

@@ -3,13 +3,21 @@
 (add-hook 'prog-mode-hook 'idle-highlight-mode)
 (add-hook 'prog-mode-hook 'hl-line-mode)
 (add-hook 'prog-mode-hook 'company-mode)
-(add-hook 'prog-mode-hook (lambda () (require 'multiple-cursors)))
 (add-hook 'prog-mode-hook #'yas-minor-mode)
 
+;;; SmartParens
+(defun smartparens-non-lisp ()
+  (when (not (member major-mode '(emacs-lisp-mode)))
+    (smartparens-mode)))
+(add-hook 'prog-mode-hook 'smartparens-non-lisp)
 
 ;;; Yasnippet
 (eval-after-load 'yas-minor-mode
-  '(yas-reload-all))
+  '(progn
+     (yas-reload-all)
+     (setq flymake-no-changes-timeout nil)
+     (setq flymake-start-syntax-check-on-newline nil)
+     (setq flycheck-check-syntax-automatically '(save mode-enabled))))
 
 ;;; elisp slime nav
 (dolist (hook '(emacs-lisp-mode-hook ielm-mode-hook))
@@ -79,3 +87,27 @@
 (add-hook 'js2-mode-hook (lambda ()
                            (add-hook 'xref-backend-functions #'xref-js2-xref-backend nil t)))
 (add-hook 'js2-mode-hook #'js2-refactor-mode)
+
+;;; haskell
+(defconst haskell-mode-dir (concat emacs-pkg-dir "/haskell-mode"))
+(defconst haskell-mode-autoloads-file
+  (concat haskell-mode-dir "/haskell-mode-autoloads.el"))
+(if (file-exists-p haskell-mode-autoloads-file)
+    (load haskell-mode-autoloads-file)
+  (warn "haskell-mode-autoloads.el needs to be generated manually, see github README of haskell-mode. Need to do 'make haskell-mode-autoloads.el' inside of haskell-mode dir. If it fails try rm haskell-mode-autoloads.el first if it exists"))
+
+(add-to-list 'Info-default-directory-list haskell-mode-dir)
+(add-hook 'haskell-mode-hook 'dante-mode)
+(add-hook 'haskell-mode-hook 'flycheck-mode)
+;; put dante-company at the end of the company-backends list
+(defun dante-company-backends ()
+  (when (boundp 'company-backends)
+    (make-local-variable 'company-backends)
+    (setq company-backends (delete 'dante-company company-backends))
+    ;; (add-to-list 'company-backends 'dante-company)
+    (add-to-list 'company-backends 'company-dabbrev-code)
+    (message "put dante-company at the end")
+    ))
+(add-hook 'dante-mode 'dante-company-backends)
+
+
