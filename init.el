@@ -63,7 +63,8 @@
         (update-directory-autoloads d)))))
 
 (when (not (file-exists-p (concat user-emacs-directory "my-autoload.el")))
-  (pnh-reinit-libs))
+  (pnh-reinit-libs)
+  )
 
 (load (concat user-emacs-directory "my-autoload.el"))
 
@@ -180,43 +181,47 @@
 (require 'smart-mode-line)
 (sml/setup)
 ;; python
-(require 'elpy)
-(elpy-enable)
+(eval-after-load 'elpy
+  '(progn (elpy-enable)
+          (setq python-shell-interpreter "ipython"
+                python-shell-interpreter-args "-i --simple-prompt")
+          (add-to-list 'python-shell-completion-native-disabled-interpreters
+                       "jupyter")
+          (require 'py-autopep8)
+          (add-hook 'elpy-mode-hook 'py-autopep8-enable-on-save)))
 ;; (setq python-shell-interpreter "python"
 ;;       python-shell-interpreter-args "-i"
 ;;       python-shell-prompt-detect-failure-warning nil)
 ;; (setq python-shell-interpreter "jupyter"
 ;;       python-shell-interpreter-args "console --simple-prompt"
 ;;       python-shell-prompt-detect-failure-warning nil)
-(setq python-shell-interpreter "ipython"
-      python-shell-interpreter-args "-i --simple-prompt")
-(add-to-list 'python-shell-completion-native-disabled-interpreters
-             "jupyter")
-(require 'py-autopep8)
-(add-hook 'elpy-mode-hook 'py-autopep8-enable-on-save)
+
+
 ;; javascript
 ;;(require 'indium)
-(require 'js2-mode)
+(eval-after-load 'js2-mode
+  '(progn (require 'js2-refactor)
+          (require 'xref-js2)  ; requires the silversearcher (ag)
+          (js2r-add-keybindings-with-prefix "C-c C-r")
+          (define-key js2-mode-map (kbd "C-k") #'js2r-kill)
+          ;; js-mode (which js2 is based on) binds "M-." which conflicts with xref, so
+          ;; unbind it.
+          (define-key js-mode-map (kbd "M-.") nil)
+          ))
 (add-to-list 'auto-mode-alist '("\\.js\\'" . js2-mode))
 (add-to-list 'auto-mode-alist '("\\.mjs\\'" . js2-mode))
 ;; Better imenu
 (add-hook 'js2-mode-hook #'js2-imenu-extras-mode)
-(require 'js2-refactor)
-(require 'xref-js2)  ; requires the silversearcher (ag)
-
-(add-hook 'js2-mode-hook #'js2-refactor-mode)
-(js2r-add-keybindings-with-prefix "C-c C-r")
-(define-key js2-mode-map (kbd "C-k") #'js2r-kill)
-
-;; js-mode (which js2 is based on) binds "M-." which conflicts with xref, so
-;; unbind it.
-(define-key js-mode-map (kbd "M-.") nil)
-
 (add-hook 'js2-mode-hook (lambda ()
-  (add-hook 'xref-backend-functions #'xref-js2-xref-backend nil t)))
+                           (add-hook 'xref-backend-functions #'xref-js2-xref-backend nil t)))
+(add-hook 'js2-mode-hook #'js2-refactor-mode)
+
+
+
 ;; yasnippet
-(require 'yasnippet)
-(yas-global-mode 1)
+(eval-after-load 'yasnippet
+  '(progn (require 'haskell-snippets)
+          (yas-global-mode 1)))
 ;; buffer-move
 (require 'buffer-move)
 (global-set-key (kbd "<C-s-up>")     'buf-move-up)
