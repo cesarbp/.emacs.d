@@ -1,23 +1,30 @@
-;(add-hook 'prog-mode-hook 'whitespace-mode)
 (add-hook 'prog-mode-hook 'prettify-symbols-mode)
 (add-hook 'prog-mode-hook 'idle-highlight-mode)
 (add-hook 'prog-mode-hook 'hl-line-mode)
 (add-hook 'prog-mode-hook 'company-mode)
-(add-hook 'prog-mode-hook #'yas-minor-mode)
+(add-hook 'prog-mode-hook 'smartparens-non-lisp)
+(add-hook 'prog-mode-hook 'general-coding-hook)
 
 ;;; SmartParens
 (defun smartparens-non-lisp ()
   (when (not (member major-mode '(emacs-lisp-mode)))
     (smartparens-mode)))
-(add-hook 'prog-mode-hook 'smartparens-non-lisp)
 
-;;; Yasnippet
-(eval-after-load 'yas-minor-mode
-  '(progn
-     (yas-reload-all)
-     (setq flymake-no-changes-timeout nil)
-     (setq flymake-start-syntax-check-on-newline nil)
-     (setq flycheck-check-syntax-automatically '(save mode-enabled))))
+;;; Random stuff
+(defun general-coding-hook ()
+  (make-local-variable 'column-number-mode)
+  (column-number-mode t)
+  (if window-system (hl-line-mode t))
+  ;; Add easier to see foreground for dark themes
+  ;; Makes it play better with idle-highlight too
+  (set-face-attribute 'hl-line nil :distant-foreground "#00FFFF")
+  (yas-minor-mode)
+  (yas-reload-all))
+
+;;; Flymakers
+(setq flymake-no-changes-timeout nil)
+(setq flymake-start-syntax-check-on-newline nil)
+(setq flycheck-check-syntax-automatically '(save mode-enabled))
 
 ;;; elisp slime nav
 (dolist (hook '(emacs-lisp-mode-hook ielm-mode-hook))
@@ -104,10 +111,16 @@
   (when (boundp 'company-backends)
     (make-local-variable 'company-backends)
     (setq company-backends (delete 'dante-company company-backends))
-    ;; (add-to-list 'company-backends 'dante-company)
     (add-to-list 'company-backends 'company-dabbrev-code)
     (message "put dante-company at the end")
     ))
-(add-hook 'dante-mode 'dante-company-backends)
+(add-hook 'dante-mode-hook 'dante-company-backends)
 
+;;; SQL
+(add-hook 'sql-mode-hook
+          (lambda ()
+            (make-local-variable 'indent-tabs-mode)
+            (make-local-variable 'c-basic-offset)
+            (setq indent-tabs-mode nil
+                  c-basic-offset 4)))
 
