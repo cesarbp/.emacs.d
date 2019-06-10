@@ -28,11 +28,11 @@
   '(progn
      (require 'erc-services)
      (require 'erc-truncate)
-     (require 'notifications)
+     ;(require 'notifications)
      (erc-services-mode 1)
      (erc-truncate-mode 1)
      (setq erc-complete-functions '(erc-pcomplete erc-button-next))
-     (add-to-list 'erc-modules 'notifications)
+     ;(add-to-list 'erc-modules 'notifications)
      (define-key erc-mode-map (kbd "C-c r") 'pnh-reset-erc-track-mode)
      (define-key erc-mode-map (kbd "C-c C-M-SPC") 'erc-track-clear)
      (define-key erc-mode-map (kbd "C-u RET") 'browse-last-url-in-brower)))
