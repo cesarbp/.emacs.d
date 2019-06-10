@@ -105,6 +105,8 @@
 ;; And then run `make` inside magit's directory
 (when (file-exists-p (concat emacs-pkg-dir "/magit/lisp/magit-autoloads.el"))
   (load (concat emacs-pkg-dir "/magit/lisp/magit-autoloads.el")))
+;; Add hotkey for the autoloaded function
+(define-key global-map "\C-xg" 'magit-status)
 
 (with-eval-after-load 'info
   (info-initialize)
