@@ -112,7 +112,6 @@
     (make-local-variable 'company-backends)
     (setq company-backends (delete 'dante-company company-backends))
     (add-to-list 'company-backends 'company-dabbrev-code)
-    (message "put dante-company at the end")
     ))
 (add-hook 'dante-mode-hook 'dante-company-backends)
 
