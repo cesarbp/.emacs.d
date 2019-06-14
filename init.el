@@ -77,12 +77,13 @@
 ;; ido
 ;(require 'ido-completing-read+)
 ;(require 'flx-ido)
-(ido-mode 1)
+;;(ido-mode 1)        ; loaded by better-defaults
 (ido-everywhere 1)
 (ido-ubiquitous-mode 1)
 (flx-ido-mode 1)
+(ido-vertical-mode 1)
 ;; disable ido faces to see flx highlights.
-(setq ido-enable-flex-matching t)
+;(setq ido-enable-flex-matching t)    ; loaded by better-defaults
 (setq ido-use-faces nil)
 ;; icons - Note: do M-x all-the-icons-install-fonts
 ;(require 'memoize)
