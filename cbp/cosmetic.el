@@ -25,4 +25,3 @@
 
 (when (display-graphic-p)
   (setq initial-frame-alist '((width . 180) (height . 55))))
-
