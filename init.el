@@ -147,6 +147,13 @@
 ;; smart mode line
 ;(require 'smart-mode-line)
 (sml/setup)
+;; Prevent some minor modes from showing in the mode lines
+(setq rm-blacklist
+      (format "^ \\(%s\\)$"
+              (mapconcat #'identity
+                         '("Fly.*" "Projectile.*" "PgLn" "SliNav" "company"
+                           "yas" "Undo-Tree" "ElDoc" "Paredit" "SP" "ARev")
+                         "\\|")))
 ;; buffer-move
 ;(require 'buffer-move)
 (global-set-key (kbd "<C-s-up>")     'buf-move-up)
