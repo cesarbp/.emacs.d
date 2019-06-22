@@ -115,6 +115,9 @@
     (add-to-list 'company-backends 'company-dabbrev-code)
     ))
 (add-hook 'dante-mode-hook 'dante-company-backends)
+(add-hook 'dante-mode-hook
+   '(lambda () (flycheck-add-next-checker 'haskell-dante
+                '(warning . haskell-hlint))))
 
 ;;; SQL
 (add-hook 'sql-mode-hook
