@@ -5,3 +5,6 @@
   (set-mark (line-beginning-position)))
 
 (define-key global-map "\C-cs" 'select-current-line)
+
+(global-set-key (kbd "<f5>") 'scroll-up-line)
+(global-set-key (kbd "<f6>") 'scroll-down-line)
