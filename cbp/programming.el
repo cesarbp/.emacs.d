@@ -5,6 +5,7 @@
 (add-hook 'prog-mode-hook 'smartparens-non-lisp)
 (add-hook 'prog-mode-hook 'general-coding-hook)
 (add-hook 'prog-mode-hook 'rainbow-delimiters-mode)
+;(add-hook 'prog-mode-hook 'highlight-parentheses-mode)
 
 ;;; SmartParens
 (defun smartparens-non-lisp ()

@@ -152,7 +152,8 @@
       (format "^ \\(%s\\)$"
               (mapconcat #'identity
                          '("Fly.*" "Projectile.*" "PgLn" "SliNav" "company"
-                           "yas" "Undo-Tree" "ElDoc" "Paredit" "SP" "ARev")
+                           "yas" "Undo-Tree" "ElDoc" "Paredit" "SP" "ARev"
+                           "Hi")
                          "\\|")))
 ;; buffer-move
 ;(require 'buffer-move)
