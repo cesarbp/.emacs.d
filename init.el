@@ -9,12 +9,12 @@
    (quote
     ("a24c5b3c12d147da6cef80938dca1223b7c7f70f2f382b26308eba014dc4833a" "3c83b3676d796422704082049fc38b6966bcad960f896669dfc21a7a37a748fa" default))))
 
-(let ((sf-mono (font-spec :name "SF Mono" :height 120))
-      (ubuntu (font-spec :name "Ubuntu Mono" :height 120)))
+(let ((sf-mono (font-spec :name "SF Mono"))
+      (ubuntu (font-spec :name "Ubuntu Mono")))
   (cond ((find-font sf-mono)
-         (set-face-attribute 'default nil :font sf-mono))
+         (set-face-attribute 'default nil :font sf-mono :height 120))
 	((find-font ubuntu)
-	 (set-face-attribute 'default nil :font ubuntu))))
+	 (set-face-attribute 'default nil :font ubuntu :height 108))))
 
 (setq epa-armor t
       tls-checktrust 'ask
