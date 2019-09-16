@@ -128,3 +128,8 @@
             (setq indent-tabs-mode nil
                   c-basic-offset 4)))
 
+;;; Wolfram
+(autoload 'wolfram-mode "wolfram-mode" nil t)
+(autoload 'run-wolfram "wolfram-mode" nil t)
+(setq wolfram-program "/Applications/Wolfram Engine.app/Contents/Resources/Wolfram Player.app/Contents/MacOS/MathKernel")
+(add-to-list 'auto-mode-alist '("\\.wl$" . wolfram-mode))
