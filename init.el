@@ -9,13 +9,13 @@
    (quote
     ("a24c5b3c12d147da6cef80938dca1223b7c7f70f2f382b26308eba014dc4833a" "3c83b3676d796422704082049fc38b6966bcad960f896669dfc21a7a37a748fa" default))))
 
-(let ((cascadia (font-spec :name "Cascadia Code"))
-      (sf-mono (font-spec :name "SF Mono"))
+(let ((sf-mono (font-spec :name "SF Mono"))
+      (source-code (font-spec :name "Source Code Pro"))
       (ubuntu (font-spec :name "Ubuntu Mono")))
-  (cond ((find-font cascadia)
-         (set-face-attribute 'default nil :font cascadia :height 120))
-        ((find-font sf-mono)
-         (set-face-attribute 'default nil :font sf-mono :height 120))
+  (cond ((find-font sf-mono)
+         (set-face-attribute 'default nil :font sf-mono :height 92))
+        ((find-font source-code)
+         (set-face-attribute 'default nil :font source-code :height 120))
 	((find-font ubuntu)
 	 (set-face-attribute 'default nil :font ubuntu :height 108))))
 
