@@ -10,7 +10,7 @@
 ;;; highlight current line number
 (require 'hlinum)
 (hlinum-activate)
-(global-linum-mode)
+;(global-linum-mode)
 (set-face-foreground 'linum "dim gray")
 
 ;;; Mac OS config
