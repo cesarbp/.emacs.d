@@ -1,83 +1,82 @@
-;;; doom-city-lights-theme.el --- inspired by Atom City Lights -*- no-byte-compile: t; -*-
+;;; doom-solarized-dark-theme.el --- inspired by VS Code Solarized Dark -*- no-byte-compile: t; -*-
 (require 'doom-themes)
 
 ;;
-(defgroup doom-city-lights-theme nil
+(defgroup doom-solarized-dark-theme nil
   "Options for doom-themes"
   :group 'doom-themes)
 
-(defcustom doom-city-lights-brighter-modeline nil
+(defcustom doom-solarized-dark-brighter-modeline nil
   "If non-nil, more vivid colors will be used to style the mode-line."
-  :group 'doom-city-lights-theme
+  :group 'doom-solarized-dark-theme
   :type 'boolean)
 
-(defcustom doom-city-lights-brighter-comments nil
+(defcustom doom-solarized-dark-brighter-comments nil
   "If non-nil, comments will be highlighted in more vivid colors."
-  :group 'doom-city-lights-theme
+  :group 'doom-solarized-dark-theme
   :type 'boolean)
 
-(defcustom doom-city-lights-comment-bg doom-city-lights-brighter-comments
+(defcustom doom-solarized-dark-comment-bg doom-solarized-dark-brighter-comments
   "If non-nil, comments will have a subtle, darker background. Enhancing their
 legibility."
-  :group 'doom-city-lights-theme
+  :group 'doom-solarized-dark-theme
   :type 'boolean)
 
-(defcustom doom-city-lights-padded-modeline doom-themes-padded-modeline
+(defcustom doom-solarized-dark-padded-modeline doom-themes-padded-modeline
   "If non-nil, adds a 4px padding to the mode-line. Can be an integer to
 determine the exact padding."
-  :group 'doom-city-lights-theme
+  :group 'doom-solarized-dark-theme
   :type '(choice integer boolean))
 
 ;;
-(def-doom-theme doom-city-lights
-  "A dark theme inspired by Atom City Lights"
+(def-doom-theme doom-solarized-dark
+  "A dark theme inspired by VS Code Solarized Dark"
 
   ;; name        default   256       16
-  ((bg         '("#1D252C" nil       nil            ))
-   (bg-alt     '("#181E24" nil       nil            ))
-   (base0      '("#10151C" "black"   "black"        ))
-   (base1      '("#171D22" "#111122" "brightblack"  ))
-   (base2      '("#20282F" "#222222" "brightblack"  ))
-   (base3      '("#28323B" "#223333" "brightblack"  ))
-   (base4      '("#384551" "#334455" "brightblack"  ))
-   (base5      '("#56697A" "#556677" "brightblack"  ))
-   (base6      '("#688094" "#668899" "brightblack"  ))
-   (base7      '("#7FA0B7" "#77AABB" "brightblack"  ))
-   (base8      '("#9CAABB" "#99AABB" "white"        ))
-   (fg-alt     '("#728CA0" "#7788AA" "brightwhite"  ))
-   (fg         '("#A0B3C5" "#AABBCC" "white"        ))
+  ((bg         '("#002b36" nil       nil            ))
+   (bg-alt     '("#00212B" nil       nil           ))
+   (base0      '("#073642" "black"   "black"       ))
+   (base1      '("#03282F" "#1e1e1e" "brightblack" ))
+   (base2      '("#00212C" "#2e2e2e" "brightblack" ))
+   (base3      '("#13383C" "#262626" "brightblack" ))
+   (base4      '("#56697A" "#3f3f3f" "brightblack" ))
+   (base5      '("#405A61" "#525252" "brightblack" ))
+   (base6      '("#96A7A9" "#6b6b6b" "brightblack" ))
+   (base7      '("#788484" "#979797" "brightblack" ))
+   (base8      '("#626C6C" "#dfdfdf" "white"       ))
+   (fg-alt     '("#657b83" "#2d2d2d" "white"       ))
+   (fg         '("#839496" "#bfbfbf" "brightwhite" ))
 
-   (grey        '("#41505E" "#ff6655" "red"          ))
-   (red         '("#D95468" "#ff6655" "red"          ))
-   (orange      '("#D98E48" "#dd8844" "brightred"    ))
-   (green       '("#8BD49C" "#99bb66" "green"        ))
-   (teal        '("#33CED8" "#33CCDD" "brightgreen"  ))
-   (yellow      '("#EBBF83" "#EEBB88" "yellow"       ))
-   (blue        '("#5EC4FF" "#55CCFF" "brightblue"   ))
-   (bright-blue '("#539AFC" "#5599FF" "blue"         ))
-   (dark-blue   '("#718CA1" "#7788AA" "blue"         ))
-   (magenta     '("#E27E8D" "#EE7788" "magenta"      ))
-   (violet      '("#B62D65" "#BB2266" "brightmagenta"))
-   (cyan        '("#70E1E8" "#77EEEE" "brightcyan"   ))
-   (dark-cyan   '("#008B94" "#008899" "cyan"   ))
+   (grey       base4)
+   (red        '("#dc322f" "#ff6655" "red"          ))
+   (orange     '("#cb4b16" "#dd8844" "brightred"    ))
+   (green      '("#859900" "#99bb66" "green"        ))
+   (teal       '("#35a69c" "#33aa99" "brightgreen"  ))
+   (yellow     '("#b58900" "#ECBE7B" "yellow"       ))
+   (blue       '("#268bd2" "#51afef" "brightblue"   ))
+   (dark-blue  '("#3F88AD" "#2257A0" "blue"         ))
+   (magenta    '("#d33682" "#c678dd" "magenta"      ))
+   (violet     '("#6c71c4" "#a9a1e1" "brightmagenta"))
+   (cyan       '("#2aa198" "#46D9FF" "brightcyan"   ))
+   (dark-cyan  '("#204052" "#5699AF" "cyan"         ))
 
    ;; face categories -- required for all themes
    (highlight      blue)
    (vertical-bar   (doom-darken base1 0.5))
    (selection      dark-blue)
    (builtin        blue)
-   (comments       (if doom-city-lights-brighter-comments dark-cyan grey))
-   (doc-comments   (doom-lighten (if doom-city-lights-brighter-comments dark-cyan grey) 0.25))
+   (comments       (if doom-solarized-dark-brighter-comments blue base5))
+   (doc-comments   teal)
    (constants      magenta)
-   (functions      teal)
-   (keywords       blue)
+   (functions      blue)
+   (keywords       green)
    (methods        cyan)
-   (operators      blue)
+   (operators      orange)
    (type           yellow)
-   (strings        bright-blue)
-   (variables      dark-blue)
+   (strings        cyan)
+   (variables      violet)
    (numbers        magenta)
-   (region         base3)
+   (region         base0)
    (error          red)
    (warning        yellow)
    (success        green)
@@ -87,10 +86,10 @@ determine the exact padding."
 
    ;; custom categories
    (hidden     `(,(car bg) "black" "black"))
-   (-modeline-bright doom-city-lights-brighter-modeline)
+   (-modeline-bright doom-solarized-dark-brighter-modeline)
    (-modeline-pad
-    (when doom-city-lights-padded-modeline
-      (if (integerp doom-city-lights-padded-modeline) doom-city-lights-padded-modeline 4)))
+    (when doom-solarized-dark-padded-modeline
+      (if (integerp doom-solarized-dark-padded-modeline) doom-solarized-dark-padded-modeline 4)))
 
    (modeline-fg     nil)
    (modeline-fg-alt base5)
@@ -108,19 +107,38 @@ determine the exact padding."
 
 
   ;; --- extra faces ------------------------
-  ((elscreen-tab-other-screen-face :background "#353a42" :foreground "#1e2022")
+  ((company-tooltip-selection     :background dark-cyan)
+   (elscreen-tab-other-screen-face :background "#353a42" :foreground "#1e2022")
 
    ((line-number &override) :foreground base4)
    ((line-number-current-line &override) :foreground fg)
 
+   (helm-selection :inherit 'bold
+                   :background selection
+                   :distant-foreground bg
+                   :extend t)
+
    (font-lock-comment-face
     :foreground comments
-    :background (if doom-city-lights-comment-bg (doom-lighten bg 0.05)))
+    :background (if doom-solarized-dark-comment-bg (doom-lighten bg 0.05)))
    (font-lock-doc-face
     :inherit 'font-lock-comment-face
     :foreground doc-comments)
+   (font-lock-keyword-face
+    :weight 'bold
+    :foreground keywords)
+   (font-lock-constant-face
+    :weight 'bold
+    :foreground constants)
 
-   (doom-modeline-bar :background (if -modeline-bright modeline-bg highlight))
+   ;; Centaur tabs
+   (centaur-tabs-active-bar-face :background blue)
+   (centaur-tabs-modified-marker-selected :inherit 'centaur-tabs-selected
+                                          :foreground blue)
+   (centaur-tabs-modified-marker-unselected :inherit 'centaur-tabs-unselected
+                                            :foreground blue)
+   ;; Doom modeline
+   (doom-modeline-bar :background blue)
 
    (mode-line
     :background modeline-bg :foreground modeline-fg
@@ -140,15 +158,12 @@ determine the exact padding."
     :background modeline-bg-inactive-l
     :box (if -modeline-pad `(:line-width ,-modeline-pad :color ,modeline-bg-inactive-l)))
 
+   (tooltip              :background bg-alt :foreground fg)
    ;; --- major-mode faces -------------------
    ;; css-mode / scss-mode
    (css-proprietary-property :foreground orange)
    (css-property             :foreground green)
    (css-selector             :foreground blue)
-
-   ;; magit-mode
-   (magit-diff-hunk-heading-highlight :foreground fg :background base4 :weight 'bold)
-   (magit-diff-hunk-heading :foreground fg-alt :background base3 :weight 'normal)
 
    ;; markdown-mode
    (markdown-markup-face :foreground base5)
@@ -169,29 +184,12 @@ determine the exact padding."
    ((outline-8 &override) :foreground (doom-darken green 0.4))
 
    ;; org-mode
-   ((org-block &override) :background base2)
-   ((org-block-begin-line &override) :background base2)
+   ((org-block &override) :background base0)
+   ((org-block-begin-line &override) :foreground comments :background base0)
    (org-hide :foreground hidden)
-   (solaire-org-hide-face :foreground hidden)
-
-   ;; tooltip and company
-   (tooltip              :background bg-alt :foreground fg)
-   (company-tooltip-selection     :background base3)
-
-   ;; Ivy
-   (ivy-minibuffer-match-face-2 :foreground blue :weight 'bold)
-
-   ;; js2-mode
-   (js2-object-property :foreground dark-blue)
-   (js2-object-property-access :foreground dark-cyan) 
-   
-   ;; rjsx-mode
-   (rjsx-tag :foreground dark-cyan)
-   (rjsx-attr :foreground cyan :slant 'italic :weight 'medium)
-   )
-
+   (solaire-org-hide-face :foreground hidden))
   ;; --- extra variables ---------------------
-  ()
+  ;; ()
   )
 
-;;; doom-city-lights-theme.el ends here
+;;; doom-solarized-dark-theme.el ends here

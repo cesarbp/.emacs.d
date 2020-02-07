@@ -1,4 +1,4 @@
-;;; doom-tomorrow-night-theme.el
+;;; doom-tomorrow-night-theme.el -*- no-byte-compile: t; -*-
 (require 'doom-themes)
 
 (defgroup doom-tomorrow-night-theme nil
@@ -9,14 +9,14 @@
   "If non-nil, adds a 4px padding to the mode-line. Can be an integer to
 determine the exact padding."
   :group 'doom-tomorrow-night-theme
-  :type '(or integer boolean))
+  :type '(choice integer boolean))
 
 (def-doom-theme doom-tomorrow-night
   "A theme based off of Chris Kempson's Tomorrow Dark."
 
   ;; name        gui       256       16
   ((bg         '("#1d1f21" nil       nil          ))
-   (bg-alt     '("#232527" nil       nil          ))
+   (bg-alt     '("#161719" nil       nil          ))
    (base0      '("#0d0d0d" "black"   "black"      ))
    (base1      '("#1b1b1b" "#1b1b1b"              ))
    (base2      '("#212122" "#1e1e1e"              ))
@@ -27,7 +27,7 @@ determine the exact padding."
    (base7      '("#969896" "#979797" "brightblack"))
    (base8      '("#ffffff" "#ffffff" "white"      ))
    (fg         '("#c5c8c6" "#c5c5c5" "white"))
-   (fg-alt     (doom-darken fg 0.6))
+   (fg-alt     (doom-darken fg 0.4))
 
    (grey       '("#5a5b5a" "#5a5a5a" "brightblack"))
    (red        '("#cc6666" "#cc6666" "red"))
@@ -43,9 +43,9 @@ determine the exact padding."
    (dark-cyan  (doom-darken cyan 0.4))
 
    ;; face categories
-   (highlight      dark-blue)
-   (vertical-bar   `("#161616" ,@base0))
-   (selection      (doom-lighten bg 0.1))
+   (highlight      blue)
+   (vertical-bar   base0)
+   (selection      `(,(car (doom-lighten bg 0.1)) ,@(cdr base4)))
    (builtin        blue)
    (comments       grey)
    (doc-comments   (doom-lighten grey 0.14))

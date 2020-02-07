@@ -1,4 +1,4 @@
-;; doom-molokai-theme.el --- inspired by Textmate's monokai
+;; doom-molokai-theme.el --- inspired by Textmate's Monokai -*- no-byte-compile: t; -*-
 (require 'doom-themes)
 
 ;;
@@ -6,8 +6,19 @@
   "Options for doom-molokai."
   :group 'doom-themes)
 
+(defcustom doom-molokai-brighter-modeline nil
+  "If non-nil, more vivid colors will be used to style the mode-line."
+  :group 'doom-molokai-theme
+  :type 'boolean)
+
 (defcustom doom-molokai-brighter-comments nil
   "If non-nil, comments will be highlighted in more vivid colors."
+  :group 'doom-molokai-theme
+  :type 'boolean)
+
+(defcustom doom-molokai-comment-bg doom-molokai-brighter-comments
+  "If non-nil, comments will have a subtle, darker background. Enhancing their
+legibility."
   :group 'doom-molokai-theme
   :type 'boolean)
 
@@ -15,16 +26,16 @@
   "If non-nil, adds a 4px padding to the mode-line. Can be an integer to
 determine the exact padding."
   :group 'doom-molokai-theme
-  :type '(or integer boolean))
+  :type '(choice integer boolean))
 
 ;;
 (def-doom-theme doom-molokai
-  "A dark, vibrant theme inspired by Textmate's monokai."
+  "A dark, vibrant theme inspired by Textmate's Monokai."
 
   ;; name        gui       256       16
-  ((bg         '("#1c1e1f" nil       nil))
-   (bg-alt     '("#222323" nil       nil))
-   (base0      '("#000000"))
+  ((bg         '("#1c1e1f" nil       nil          ))
+   (bg-alt     '("#222323" nil       nil          ))
+   (base0      '("#1B2229" "black"   "black"      ))
    (base1      '("#151617" "#101010" "brightblack"))
    (base2      '("#1d1f20" "#191919" "brightblack"))
    (base3      '("#2d2e2e" "#252525" "brightblack"))
@@ -52,7 +63,7 @@ determine the exact padding."
    ;; face categories
    (highlight      orange)
    (vertical-bar   (doom-lighten bg 0.1))
-   (selection      base0)
+   (selection      base5)
    (builtin        orange)
    (comments       (if doom-molokai-brighter-comments violet base5))
    (doc-comments   (if doom-molokai-brighter-comments (doom-lighten violet 0.1) (doom-lighten base5 0.25)))
@@ -74,11 +85,19 @@ determine the exact padding."
    (vc-deleted     red)
 
    ;; custom categories
+   (hidden     `(,(car bg) "black" "black"))
+   (-modeline-bright doom-molokai-brighter-modeline) ;; no effect for the moment
    (-modeline-pad
     (when doom-molokai-padded-modeline
-      (if (integerp doom-molokai-padded-modeline)
-          doom-molokai-padded-modeline
-        4)))
+      (if (integerp doom-molokai-padded-modeline) doom-molokai-padded-modeline 4)))
+
+   (modeline-fg nil)
+   (modeline-fg-alt base4)
+
+   (modeline-bg
+    (if -modeline-bright base3 base3))
+   (modeline-bg-inactive
+    (if -modeline-bright (doom-darken base2 0.2) (doom-darken base2 0.2)))
 
    (org-quote `(,(doom-lighten (car bg) 0.05) "#1f1f1f")))
 
@@ -88,15 +107,23 @@ determine the exact padding."
    (cursor :background magenta)
 
    (mode-line
-    :background base3 :foreground base8
-    :box (if -modeline-pad `(:line-width ,-modeline-pad :color base3)))
+    :background modeline-bg :foreground modeline-fg
+    :box (if -modeline-pad `(:line-width ,-modeline-pad :color modeline-bg)))
    (mode-line-inactive
-    :background (doom-darken base2 0.2) :foreground base4
-    :box (if -modeline-pad `(:line-width ,-modeline-pad :color base2)))
-   (doom-modeline-bar :background green)
+    :background modeline-bg-inactive :foreground modeline-fg-alt
+    :box (if -modeline-pad `(:line-width ,-modeline-pad :color modeline-bg-inactive)))
 
-   (doom-modeline-buffer-modified :inherit 'bold :foreground orange)
+   ;; Centaur tabs
+   (centaur-tabs-active-bar-face :background green)
+   (centaur-tabs-modified-marker-selected :inherit 'centaur-tabs-selected :foreground green)
+   (centaur-tabs-modified-marker-unselected :inherit 'centaur-tabs-unselected :foreground green)
+
+   ;; Doom modeline
+   (doom-modeline-bar :background green)
+   (doom-modeline-buffer-file :inherit 'mode-line-buffer-id :weight 'bold)
    (doom-modeline-buffer-path :inherit 'bold :foreground green)
+   (doom-modeline-buffer-project-root :foreground green :weight 'bold)
+   (doom-modeline-buffer-modified :inherit 'bold :foreground orange)
 
    ((line-number &override) :foreground base5 :distant-foreground nil)
    ((line-number-current-line &override) :foreground base7 :distant-foreground nil)
@@ -148,18 +175,14 @@ determine the exact padding."
    (markdown-list-face :foreground magenta)
    (markdown-pre-face  :foreground cyan)
    (markdown-link-face :inherit 'bold :foreground blue)
-   (markdown-code-face :background (doom-lighten base2 0.045))
+   ((markdown-code-face &override) :background (doom-lighten base2 0.045))
 
    ;; org-mode
-   (org-level-1 :background base2 :foreground magenta :bold bold :height 1.2)
-   (org-level-2 :inherit 'org-level-1 :foreground orange)
-   (org-level-3 :bold bold :foreground violet)
-   (org-level-4 :inherit 'org-level-3)
-   (org-level-5 :inherit 'org-level-3)
-   (org-level-6 :inherit 'org-level-3)
-   (org-ellipsis :underline nil :background base2 :foreground orange)
+   ((outline-1 &override) :foreground magenta)
+   ((outline-2 &override) :foreground orange)
+   (org-ellipsis :foreground orange)
    (org-tag :foreground yellow :bold nil)
-   (org-quote :inherit 'italic :foreground base7 :background org-quote)
+   ((org-quote &override) :inherit 'italic :foreground base7 :background org-quote)
    (org-todo :foreground yellow :bold 'inherit)
    (org-list-dt :foreground yellow))
 
