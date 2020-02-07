@@ -1,4 +1,4 @@
-;;; doom-opera-light-theme.el --- Opera-Light theme
+;;; doom-opera-light-theme.el --- Opera-Light theme -*- no-byte-compile: t; -*-
 
 (require 'doom-themes)
 
@@ -26,7 +26,7 @@ legibility."
   "If non-nil, adds a 4px padding to the mode-line. Can be an integer to
 determine the exact padding."
   :group 'doom-opera-light-theme
-  :type '(or integer boolean))
+  :type '(choice integer boolean))
 
 (defcustom doom-opera-light-region-highlight t
   "Determines the selection highlight style. Can be 'frost, 'snowstorm or t
@@ -35,7 +35,7 @@ determine the exact padding."
   :type 'symbol)
 
 (def-doom-theme doom-opera-light
-  "A dark opera-light theme."
+  "A light Opera theme."
 
   ;; name        default   256       16
   ((bg         '("#fafafa" nil       nil ))
@@ -123,6 +123,8 @@ determine the exact padding."
     :foreground doc-comments)
 
    (doom-modeline-bar :background (if -modeline-bright modeline-bg highlight))
+
+   (ivy-current-match :background base5)
 
    (mode-line
     :background modeline-bg :foreground modeline-fg

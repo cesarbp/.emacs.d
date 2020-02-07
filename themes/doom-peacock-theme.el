@@ -1,4 +1,4 @@
-;;; doom-peacock-theme.el
+;;; doom-peacock-theme.el --- inspired by daylerees Peacock -*- no-byte-compile: t; -*-
 (require 'doom-themes)
 
 (defgroup doom-peacock-theme nil
@@ -25,11 +25,11 @@ legibility."
   "If non-nil, adds a 4px padding to the mode-line. Can be an integer to
 determine the exact padding."
   :group 'doom-peacock-theme
-  :type '(or integer boolean))
+  :type '(choice integer boolean))
 
 ;;
 (def-doom-theme doom-peacock
-  "peacock theme!"
+  "Peacock theme from daylerees themes "
 
   ;; name        default   256       16
   ((bg         '("#2b2a27" nil       nil            ))
@@ -175,7 +175,7 @@ determine the exact padding."
    ;; markdown-mode
    (markdown-markup-face :foreground base5)
    (markdown-header-face :inherit 'bold :foreground red)
-   (markdown-code-face :background (doom-lighten base3 0.05)))
+   ((markdown-code-face &override) :background (doom-lighten base3 0.05)))
 
 
   ;; --- extra variables ---------------------
