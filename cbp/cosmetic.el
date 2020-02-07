@@ -4,9 +4,10 @@
 ;; (add-to-list 'custom-theme-load-path (concat emacs-pkg-dir "/dracula-theme/"))
 ;; (require 'color-theme-sanityinc-tomorrow)
 ;; (load-theme 'sanityinc-tomorrow-eighties t)
-(add-to-list 'custom-theme-load-path (concat emacs-pkg-dir "/emacs-material-theme"))
-(load-theme 'material)
-
+;; (add-to-list 'custom-theme-load-path (concat emacs-pkg-dir "/emacs-material-theme"))
+;; (load-theme 'material)
+(add-to-list 'custom-theme-load-path (concat emacs-pkg-dir "/emacs-doom-themes/themes"))
+(load-theme 'doom-outrun-electric)
 ;;; highlight current line number
 (require 'hlinum)
 (hlinum-activate)
