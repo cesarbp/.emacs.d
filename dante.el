@@ -31,11 +31,11 @@
 
 ;;; Commentary:
 
-;; DANTE: Do Not Aim To Expand.
+;; DANTE: Do Aim Not To Expand.
 
-;; This is a mode for GHCi advanced "IDE" features.  The mode depends
-;; on GHCi only, keeping the logic simple.  Additionally it aims to be
-;; minimal as far as possible.
+;; This is a mode to provide Emacs interface for GHCi.  The mode
+;; depends on GHCi only, keeping the logic simple.  Additionally it
+;; aims to be minimal as far as possible.
 
 ;;; Code:
 
@@ -90,68 +90,73 @@ will be in different GHCi sessions."
 
 (put 'dante-target 'safe-local-variable #'stringp)
 
-(defun dante-project-root ()
-  "Get the root directory for the project.
-If `dante-project-root' is set as a variable, return that,
-otherwise look for cabal files.  cabal.project gets first
-precedence, followed by the .cabal.  As a fallback just use the
-current directory."
-  (file-name-as-directory
-   (or dante-project-root
-       (set (make-local-variable 'dante-project-root)
-            (file-name-directory (or
-                                  (dante-cabal-find-project)
-                                  (dante-cabal-find-file)
-                                  (dante-buffer-file-name)))))))
+(defun dante-cabal-new-nix (d)
+  "non-nil iff D contains a nix file and a cabal file."
+  (and (directory-files d t "shell.nix\\|default.nix")
+       (directory-files d t "cabal.project.local")))
 
-(defun dante-repl-by-file (root files cmdline)
-  "Return if ROOT / file exists for any file in FILES, return CMDLINE."
-  (when (-any? (lambda (file) (file-exists-p (concat root file))) files) cmdline))
+(defun dante-cabal-nix (d)
+  "non-nil iff D contains a nix file and a cabal file."
+  (and (directory-files d t "shell.nix\\|default.nix")
+       (directory-files d t ".cabal$")))
 
-(defcustom dante-repl-command-line-methods-alist
-  `((styx  . ,(lambda (root) (dante-repl-by-file root '("styx.yaml") '("styx" "repl" dante-target))))
-    (nix   . ,(lambda (root) (dante-repl-by-file root '("shell.nix" "default.nix")
-                                                      '("nix-shell" "--pure" "--run" (concat "cabal repl " (or dante-target "") " --builddir=dist/dante")))))
-    (impure-nix
-           . ,(lambda (root) (dante-repl-by-file root '("shell.nix" "default.nix")
-                                                      '("nix-shell" "--run" (concat "cabal repl " (or dante-target "") " --builddir=dist/dante")))))
-    (nix-ghci
-           . ,(lambda (root) (dante-repl-by-file root '("shell.nix" "default.nix")
-                                                      '("nix-shell" "--pure" "--run" "ghci"))))
-    (stack . ,(lambda (root) (dante-repl-by-file root '("stack.yaml") '("stack" "repl" dante-target))))
-    (mafia . ,(lambda (root) (dante-repl-by-file root '("mafia") '("mafia" "repl" dante-target))))
-    (new-build . ,(lambda (root) (when (or (directory-files root nil ".+\\.cabal$") (file-exists-p "cabal.project"))
-                                   '("cabal" "new-repl" dante-target "--builddir=dist/dante"))))
-    (bare  . ,(lambda (_) '("cabal" "repl" dante-target "--builddir=dist/dante")))
-    (bare-ghci  . ,(lambda (_) '("ghci"))))
-"GHCi launch command lines.
-This is an alist from method name to a function taking the root
-directory and returning either a command line or nil if the
-method should not apply."
-  :type '(alist :key-type symbol :value-type function))
+(defcustom dante-methods-alist
+  `((styx "styx.yaml" ("styx" "repl" dante-target))
+    ; (snack ,(lambda (d) (directory-files d t "package\\.\\(yaml\\|nix\\)")) ("snack" "ghci" dante-target)) ; too easy to trigger, confuses too many people.
+    (new-impure-nix dante-cabal-new-nix ("nix-shell" "--run" (concat "cabal new-repl " (or dante-target (dante-package-name) "") " --builddir=dist/dante")))
+    (new-nix dante-cabal-new-nix ("nix-shell" "--pure" "--run" (concat "cabal new-repl " (or dante-target (dante-package-name) "") " --builddir=dist/dante")))
+    (nix dante-cabal-nix ("nix-shell" "--pure" "--run" (concat "cabal repl " (or dante-target "") " --builddir=dist/dante")))
+    (impure-nix dante-cabal-nix ("nix-shell" "--run" (concat "cabal repl " (or dante-target "") " --builddir=dist/dante")))
+    (new-build "cabal.project.local" ("cabal" "new-repl" (or dante-target (dante-package-name) nil) "--builddir=dist/dante"))
+    (nix-ghci ,(lambda (d) (directory-files d t "shell.nix\\|default.nix")) ("nix-shell" "--pure" "--run" "ghci"))
+    (stack "stack.yaml" ("stack" "repl" dante-target))
+    (mafia "mafia" ("mafia" "repl" dante-target))
+    (bare-cabal ,(lambda (d) (directory-files d t "..cabal$")) ("cabal" "repl" dante-target "--builddir=dist/dante"))
+    (bare-ghci ,(lambda (_) t) ("ghci")))
+"How to automatically locate project roots and launch GHCi.
+This is an alist from method name to a pair of
+a `locate-dominating-file' argument and a command line."
+  :type '(alist :key-type symbol :value-type (list (choice (string :tag "File to locate") (function :tag "Predicate to use")) (repeat sexp))))
 
-(defcustom dante-repl-command-line-methods (-map 'car dante-repl-command-line-methods-alist)
-  "Keys in `dante-repl-command-line-methods-alist' to try, in order.
+(defcustom dante-methods (-map 'car dante-methods-alist)
+  "Keys in `dante-methods-alist' to try, in order.
 Consider setting this variable as a directory variable."
    :group 'dante :safe t :type '(repeat symbol))
 
-(defvar-local dante-command-line nil "command line used to start GHCi")
+(put 'dante-methods 'safe-local-variable #'listp)
+
+(defun dante-initialize-method ()
+  "Initialize `dante-project-root' and `dante-repl-command-line'.
+Do it according to `dante-methods' and previous values of the above variables."
+  (or (--first (let ((root (locate-dominating-file default-directory (nth 0 it))))
+                 (when root
+                   (setq-local dante-project-root (or dante-project-root root))
+                   (setq-local dante-repl-command-line (or dante-repl-command-line (nth 1 it)))))
+               (-non-nil (--map (alist-get it dante-methods-alist)
+                                dante-methods)))
+      (error "No GHCi loading method applies.  Customize
+      `dante-methods' or
+      (`dante-repl-command-line' and `dante-project-root')")))
 
 (defun dante-repl-command-line ()
   "Return the command line for running GHCi.
-If the custom variable `dante-repl-command-line' is non-nil, it
-will be returned.  Otherwise, use
-`dante-repl-command-line-methods-alist'."
+If the variable `dante-repl-command-line' is non-nil, it will be
+returned.  Otherwise, use `dante-initialize-method'."
   (or dante-repl-command-line
-      (let ((root (dante-project-root)))
-        (or (--some (funcall it root)
-                    (--map (alist-get it dante-repl-command-line-methods-alist)
-                           dante-repl-command-line-methods))
-            (error "No GHCi loading method applies.  Customize `dante-repl-command-line-methods' or `dante-repl-command-line'")))))
+      (progn (dante-initialize-method) dante-repl-command-line)))
+
+(defun dante-project-root ()
+  "Get the root directory for the project.
+If the variable `dante-project-root' is non-nil, return that,
+otherwise search for project root using
+`dante-initialize-method'."
+  (or dante-project-root
+      (progn (dante-initialize-method) dante-project-root)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Session-local variables. These are set *IN THE GHCi INTERACTION BUFFER*
 
+(defvar-local dante-command-line nil "command line used to start GHCi")
 (defvar-local dante-load-message nil "load messages")
 (defvar-local dante-loaded-file "<DANTE:NO-FILE-LOADED>")
 (defvar-local dante-queue nil "List of ready GHCi queries.")
@@ -206,10 +211,8 @@ if the argument is omitted or nil or a positive integer).
   :keymap dante-mode-map
   :group 'dante
   (if dante-mode
-      (progn (flycheck-select-checker 'haskell-dante)
-             (add-hook 'flymake-diagnostic-functions 'dante-flymake nil t))
-      (progn (flycheck-select-checker nil)
-             (remove-hook 'flymake-diagnostic-functions 'dante-flymake t))))
+      (add-hook 'flymake-diagnostic-functions 'dante-flymake nil t)
+    (remove-hook 'flymake-diagnostic-functions 'dante-flymake t)))
 
 (define-key dante-mode-map (kbd "C-c .") 'dante-type-at)
 (define-key dante-mode-map (kbd "C-c ,") 'dante-info)
@@ -269,11 +272,13 @@ When the universal argument INSERT is non-nil, insert the type in the buffer."
                (dante-fontify-expression info))
               (goto-char (point-min)))))))))
 
-;;;;;;;;;;;;;;;;;;;;;
-;; Flycheck checker
-
 (defvar-local dante-temp-epoch -1
   "The value of `buffer-modified-tick' when the contents were last loaded.")
+
+(defvar-local dante-interpreted nil)
+
+(defvar dante-original-buffer-map (make-hash-table :test 'equal)
+  "Hash table from (local) temp file names to the file they originate.")
 
 (lcr-def dante-async-load-current-buffer (interpret)
   "Load and maybe INTERPRET the temp file for current buffer.
@@ -282,56 +287,78 @@ scope. Compiling to avoids re-interpreting the dependencies over
 and over."
   (let* ((epoch (buffer-modified-tick))
          (unchanged (equal epoch dante-temp-epoch))
-         (fname (buffer-file-name (current-buffer)))
+         (src-fname (buffer-file-name (current-buffer)))
+         (fname (dante-temp-file-name (current-buffer)))
          (buffer (lcr-call dante-session))
-         (same-buffer (s-equals? (buffer-local-value 'dante-loaded-file buffer) fname)))
-    (if (and unchanged same-buffer) (buffer-local-value 'dante-load-message buffer) ; see #52
+         (same-target (and (or dante-interpreted (not interpret))
+                       (s-equals? (buffer-local-value 'dante-loaded-file buffer) src-fname))))
+    (if (and unchanged same-target) ; see #52
+        (buffer-local-value 'dante-load-message buffer)
       (setq dante-temp-epoch epoch)
-      (basic-save-buffer-1) ;; save without re-triggering flycheck/flymake nor any save hook
+      (setq dante-interpreted interpret)
+      (puthash (dante-local-name fname) src-fname dante-original-buffer-map)
+      (write-region nil nil fname nil 0)
       ;; GHCi will interpret the buffer iff. both -fbyte-code and :l * are used.
       (lcr-call dante-async-call (if interpret ":set -fbyte-code" ":set -fobject-code"))
       (with-current-buffer buffer
-        (dante-async-write (if (and (not interpret) same-buffer) ":r"
+        (dante-async-write (if same-target ":r"
                              (concat ":l " (if interpret "*" "") (dante-local-name fname))))
         (cl-destructuring-bind (_status err-messages _loaded-modules) (lcr-call dante-load-loop "" nil)
-          (setq dante-loaded-file fname)
+          (setq dante-loaded-file src-fname)
           (setq dante-load-message err-messages))))))
 
 (defun dante-local-name (fname)
   "Local name of FNAME on the remote host."
   (string-remove-prefix (or (file-remote-p fname) "") fname))
 
+;;;;;;;;;;;;;;;;;;;;;
+;; Flycheck checker
+
 (defun dante-check (checker cont)
   "Run a check with CHECKER and pass the status onto CONT."
   (if (eq (dante-get-var 'dante-state) 'dead) (funcall cont 'interrupted)
     (lcr-cps-let ((messages (dante-async-load-current-buffer nil)))
-      (let* ((temp-file (dante-local-name (buffer-file-name (current-buffer)))))
-      (funcall cont
-               'finished
-               (--remove (eq 'splice (flycheck-error-level it))
-                         (--map (dante-fly-message it checker (current-buffer) temp-file) messages)))))))
+      (let* ((temp-file (dante-local-name (dante-temp-file-name (current-buffer)))))
+        (funcall cont
+                 'finished
+                 (-non-nil (--map (dante-fly-message it checker (current-buffer) temp-file) messages)))))))
 
 (flycheck-define-generic-checker 'haskell-dante
   "A syntax and type checker for Haskell using a Dante worker
 process."
   :start 'dante-check
-  :modes '(haskell-mode literate-haskell-mode))
+  :predicate (lambda () dante-mode)
+  :modes '(haskell-mode literate-haskell-mode)
+  :working-directory (lambda (_checker) (dante-project-root)))
+
+(add-to-list 'flycheck-checkers 'haskell-dante)
+
+(defcustom dante-flycheck-types
+  '(("^warning: \\[-W\\(typed-holes\\|deferred-\\(type-errors\\|out-of-scope-variables\\)\\)\\]" . error)
+    ("^warning" . warning)
+    ("^splicing " . nil)
+    ("" . error))
+  "Map of regular expressions to flycheck error types, ordered by priority."
+  :group 'dante :type '(repeat cons (regex symbol)))
 
 (defun dante-fly-message (matched checker buffer temp-file)
   "Convert the MATCHED message to flycheck format.
 CHECKER and BUFFER are added if the error is in TEMP-FILE."
   (cl-destructuring-bind (file location-raw err-type msg) matched
-    (let* ((type (cond
-                  ((s-matches? "^warning: \\[-W\\(typed-holes\\|deferred-\\(type-errors\\|out-of-scope-variables\\)\\)\\]" err-type) 'error)
-                  ((s-matches? "^warning:" err-type) 'warning)
-                  ((s-matches? "^splicing " err-type) 'splice)
-                  (t 'error)))
+    (let* ((type (cdr (--first (s-matches? (car it) err-type) dante-flycheck-types)))
            (location (dante-parse-error-location location-raw)))
       ;; FIXME: sometimes the "error type" contains the actual error too.
-      (flycheck-error-new-at (car location) (cadr location) type (concat err-type "\n" (s-trim-right msg))
-                             :checker checker
-                             :buffer (when (string= temp-file file) buffer)
-                             :filename (dante-buffer-file-name buffer)))))
+      (when type
+        (flycheck-error-new-at (car location) (cadr location) type
+                               (replace-regexp-in-string (regexp-quote temp-file)
+                                                         (dante-buffer-file-name buffer)
+                                                         (concat err-type "\n" (s-trim-right msg)))
+                               :checker checker
+                               :buffer buffer
+                               :filename (if (string= (dante-canonicalize-path temp-file)
+                                                      (dante-canonicalize-path file))
+                                             (dante-buffer-file-name buffer)
+                                           file))))))
 
 (defun dante-parse-error-location (string)
   "Parse the line/col numbers from the error in STRING."
@@ -359,6 +386,10 @@ CHECKER and BUFFER are added if the error is in TEMP-FILE."
            (common (nth 2 (read (concat "(" (car lines) ")")))))
       (--map (replace-regexp-in-string "\\\"" "" (concat common it)) (cdr lines)))))
 
+(defun dante--in-a-comment ()
+  "Return non-nil if point is in a comment."
+  (nth 4 (syntax-ppss)))
+
 (declare-function company-begin-backend 'company)
 
 (defun dante-company (command &optional arg &rest _ignored)
@@ -368,8 +399,8 @@ See ``company-backends'' for the meaning of COMMAND, ARG and _IGNORED."
   (cl-case command
     (interactive (company-begin-backend 'dante-company))
     (sorted t)
-    (prefix (when (and dante-mode (dante-ident-pos-at-point))
-              (let* ((id-start (car (dante-ident-pos-at-point)))
+    (prefix (when (and dante-mode (not (dante--in-a-comment)) (dante-ident-pos-at-point -1))
+              (let* ((id-start (car (dante-ident-pos-at-point -1)))
                      (_ (save-excursion (re-search-backward "import[\t ]*" (line-beginning-position) t)))
                      (import-end (match-end 0))
                      (import-start (match-beginning 0))
@@ -397,38 +428,20 @@ May return a qualified name."
     (when reg
       (apply #'buffer-substring-no-properties reg))))
 
-(defun dante-ident-pos-at-point ()
-  "Return the span of the identifier under point, or nil if none found.
-May return a qualified name."
-  (save-excursion
-    (let ((case-fold-search nil))
-      (cl-multiple-value-bind (start end)
-          (list
-           (progn (skip-syntax-backward "w_") (point))
-           (progn (skip-syntax-forward "w_") (point)))
-        ;; If we're looking at a module ID that qualifies further IDs, add
-        ;; those IDs.
-        (goto-char start)
-        (while (and (looking-at "[[:upper:]]") (eq (char-after end) ?.)
-                    ;; It's a module ID that qualifies further IDs.
-                    (goto-char (1+ end))
-                    (save-excursion
-                      (when (not (zerop (skip-syntax-forward
-                                         (if (looking-at "\\s_") "_" "w'"))))
-                        (setq end (point))))))
-        ;; If we're looking at an ID that's itself qualified by previous
-        ;; module IDs, add those too.
-        (goto-char start)
-        (if (eq (char-after) ?.) (forward-char 1)) ;Special case for "."
-        (while (and (eq (char-before) ?.)
-                    (progn (forward-char -1)
-                           (not (zerop (skip-syntax-backward "w'"))))
-                    (skip-syntax-forward "'")
-                    (looking-at "[[:upper:]]"))
-          (setq start (point)))
-        ;; This is it.
-        (unless (= start end)
-          (list start end))))))
+(defun dante-ident-pos-at-point (&optional offset)
+  "Return the span of the (qualified) identifier at point+OFFSET, or nil if none found."
+  (let* ((qualifier-regex "\\([[:upper:]][[:alnum:]]*\\.\\)")
+         (ident-regex (concat qualifier-regex "*\\(\\s.+\\|\\(\\sw\\|\\s_\\)+\\)"))) ; note * for many qualifiers
+    (save-excursion
+      (goto-char (+ (point) (or offset 0)))
+      (when (looking-at ident-regex)
+        (let ((end (match-end 0)))
+          (skip-syntax-backward (if (looking-at "\\s.") "." "w_")) ;; find start of operator/variable
+          (while (save-excursion
+                   (and (re-search-backward (concat "\\b" qualifier-regex) (line-beginning-position) t)
+                        (s-matches? (concat "^" ident-regex "$") (buffer-substring-no-properties (point) end))))
+            (goto-char (match-beginning 0)))
+          (list (point) end))))))
 
 (defun dante-buffer-file-name (&optional buffer)
   "Call function `buffer-file-name' for BUFFER and clean its result.
@@ -437,17 +450,47 @@ The path returned is canonicalized and stripped of any text properties."
     (when name
       (dante-canonicalize-path (substring-no-properties name)))))
 
+(defvar-local dante-temp-file-name nil
+  "The name of a temporary file to which the current buffer's content is copied.")
+
+(defun dante-tramp-make-tramp-temp-file (buffer)
+  "Create a temporary file for BUFFER, perhaps on a remote host."
+  (let* ((fname (buffer-file-name buffer))
+         (suffix (file-name-extension fname t)))
+    (if (file-remote-p fname)
+        (with-parsed-tramp-file-name (buffer-file-name buffer) vec
+          (let ((prefix (concat
+                         (expand-file-name
+                          tramp-temp-name-prefix (tramp-get-remote-tmpdir vec))
+                         "dante"))
+                result)
+            (while (not result)
+              (setq result (concat (make-temp-name prefix) suffix))
+              (if (file-exists-p result)
+                  (setq result nil)))
+                ;; This creates the file by side effect.
+            (set-file-times result)
+            (set-file-modes result #o700)
+            result))
+      (make-temp-file "dante" nil suffix))))
+
+(defun dante-temp-file-name (buffer)
+  "Return a (possibly remote) filename suitable to store BUFFER's contents."
+  (with-current-buffer buffer
+    (or dante-temp-file-name (setq dante-temp-file-name (dante-tramp-make-tramp-temp-file buffer)))))
 
 (defun dante-canonicalize-path (path)
   "Return a standardized version of PATH.
-Path names are standardized and drive names are
-capitalized (relevant on Windows)."
-  (dante-capitalize-drive-letter (convert-standard-filename path)))
+On Windows, forward slashes are changed to backslashes and the
+drive letter is capitalized."
+  (let ((standard-path (convert-standard-filename path)))
+    (if (eq system-type 'windows-nt)
+        (dante-capitalize-drive-letter (s-replace "/" "\\" standard-path))
+      standard-path)))
 
 (defun dante-capitalize-drive-letter (path)
   "Ensures the drive letter is capitalized in PATH.
-This applies to paths of the form
-x:\\foo\\bar (i.e., Windows)."
+This applies to paths of the form x:\\foo\\bar"
   (save-match-data
     (let ((drive-path (split-string path ":\\\\")))
       (if (or (null (car drive-path)) (null (cdr drive-path)))
@@ -465,7 +508,7 @@ x:\\foo\\bar (i.e., Windows)."
   "Format the subexpression denoted by REG for GHCi commands."
   (pcase reg (`(,beg ,end)
               (format "%S %d %d %d %d %s"
-                      (buffer-file-name (current-buffer))
+                      (dante-local-name (dante-temp-file-name (current-buffer)))
                       (line-number-at-pos beg)
                       (dante--ghc-column-number-at-pos beg)
                       (line-number-at-pos end)
@@ -509,7 +552,7 @@ Note that sub-sessions are not interleaved."
       (let ((req (pop dante-queue)))
         (when req (funcall req buffer))))))
 
-(defcustom dante-load-flags '("+c" "-fno-diagnostics-show-caret" "-Wwarn=missing-home-modules" "-ferror-spans")
+(defcustom dante-load-flags '("+c" "-fdiagnostics-color=never" "-fno-diagnostics-show-caret" "-Wwarn=missing-home-modules" "-ferror-spans" )
   "Flags to set whenever GHCi is started."
   :type (cons 'set (--map (list 'const :tag (concat (car it) ": " (cadr it)) (car it))
                           '(("+c" "Gather type information (necessary for `dante-type-at')")
@@ -518,6 +561,7 @@ Note that sub-sessions are not interleaved."
                             ("-fdefer-typed-holes" "Accept typed holes, so that completion/type-at continues to work then.")
                             ("-fdefer-type-errors" "Accept incorrectly typed programs, so that completion/type-at continues to work then. (However errors in dependencies won't be detected as such)")
                             ("-Wwarn=missing-home-modules" "Do not error-out if a module is missing in .cabal file")
+                            ("-fdiagnostics-color=never" "No color codes in error messages (color codes will trigger bugs in Dante)")
                             ("-fno-diagnostics-show-caret" "Cleaner error messages for GHC >=8.2 (ignored by earlier versions)")))))
 
 (defun dante-start ()
@@ -570,7 +614,7 @@ ACC umulate input and ERR-MSGS."
                   "^Ok, modules loaded:[ ]*\\([^\n ]*\\)\\( (.*)\\)?\."
                   "^Ok, .*modules loaded." ;; .* stands for a number in english (two, three, ...) (GHC 8.2)
                   "^Ok, one module loaded."))
-        (progress "^\\[\\([0-9]*\\) of \\([0-9]*\\)\\] Compiling \\([^ ]*\\).*")
+        (progress "^\\[\\([0-9]*\\) of \\([0-9]*\\)\\] Compiling \\([^ \n]*\\).*")
         (err-regexp "^\\([A-Z]?:?[^ \n:][^:\n\r]+\\):\\([0-9()-:]+\\): \\(.*\\)\n\\(\\([ ]+.*\n\\)*\\)")
         (result nil))
     (while (not result)
@@ -702,58 +746,12 @@ CABAL-FILE rather than trying to locate one."
                    (file-name-nondirectory cabal-file))
                 "")))))
 
-(defun dante-cabal-find-project (&optional dir)
-  "Search for cabal.project file, upwards from DIR (or `default-directory' if nil)."
-  (let ((use-dir (or dir default-directory))
-        result)
-    (while (and use-dir (not (file-directory-p use-dir)))
-      (setq use-dir (file-name-directory (directory-file-name use-dir))))
-    (when use-dir
-      (setq result (locate-dominating-file use-dir "cabal.project"))
-      (when result
-        (setq result (expand-file-name "cabal.project" result))))))
+(defun dante-cabal-find-file (&optional file)
+  "Search for directory of cabal file, upwards from FILE (or `default-directory' if nil)."
+  (let ((dir (locate-dominating-file (or file default-directory)
+                                     (lambda (d) (directory-files d t ".\\.cabal\\'")))))
+    (when dir (car (directory-files dir t ".\\.cabal\\'")))))
 
-(defun dante-cabal-find-file (&optional dir)
-  "Search for package description file upwards starting from DIR.
-If DIR is nil, `default-directory' is used as starting point for
-directory traversal.  Upward traversal is aborted if file owner
-changes.  Uses `dante-cabal-find-pkg-desc' internally."
-  (let ((use-dir (or dir default-directory)))
-    (while (and use-dir (not (file-directory-p use-dir)))
-      (setq use-dir (file-name-directory (directory-file-name use-dir))))
-    (when use-dir
-      (catch 'found
-        (let ((user (nth 2 (file-attributes use-dir)))
-              ;; Abbreviate, so as to stop when we cross ~/.
-              (root (abbreviate-file-name use-dir)))
-          ;; traverse current dir up to root as long as file owner doesn't change
-          (while (and root (equal user (nth 2 (file-attributes root))))
-            (let ((cabal-file (dante-cabal-find-pkg-desc root)))
-              (when cabal-file
-                (throw 'found cabal-file)))
-            (let ((proot (file-name-directory (directory-file-name root))))
-              (if (equal proot root) ;; fix-point reached?
-                  (throw 'found nil)
-                (setq root proot))))
-          nil)))))
-
-(defun dante-cabal-find-pkg-desc (dir &optional allow-multiple)
-  "Find a package description file in the directory DIR.
-Returns nil if none or multiple \".cabal\" files were found.  If
-ALLOW-MULTIPLE is non nil, in case of multiple \".cabal\" files,
-a list is returned instead of failing with a nil result."
-  ;; This is basically a port of Cabal's
-  ;; Distribution.Simple.Utils.findPackageDesc function
-  ;;  http://hackage.haskell.org/packages/archive/Cabal/1.16.0.3/doc/html/Distribution-Simple-Utils.html
-  ;; but without the exception throwing.
-  (let* ((cabal-files
-          (cl-remove-if 'file-directory-p
-                        (cl-remove-if-not 'file-exists-p
-                                          (directory-files dir t ".\\.cabal\\'")))))
-    (cond
-     ((= (length cabal-files) 1) (car cabal-files)) ;; exactly one candidate found
-     (allow-multiple cabal-files) ;; pass-thru multiple candidates
-     (t nil))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; xref support
@@ -778,7 +776,8 @@ a list is returned instead of failing with a nil result."
           (line (string-to-number (match-string 2 string)))
           (col (string-to-number (match-string 3 string))))
       (xref-make-file-location
-       (expand-file-name file dante-project-root)
+       (or (gethash file dante-original-buffer-map)
+           (expand-file-name file dante-project-root))
        line (1- col)))))
 
 (defun dante--summarize-src-spans (spans file)
@@ -813,22 +812,41 @@ a list is returned instead of failing with a nil result."
 (add-hook 'xref-backend-functions 'dante--xref-backend)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Idle-hook (missing bit: check for errors)
+;; Idle-hook
 
-;; (defvar dante-timer nil)
-;; (defun dante-idle-function ()
-;;   (when (bound-and-true-p dante-mode)
-;;     (let ((tap (dante--ghc-subexp (dante-thing-at-point))))
-;;       (unless (or (nth 4 (syntax-ppss)) (nth 3 (syntax-ppss)) (s-blank? tap))
-;;         (setq-local dante-idle-point (point))
-;;         (lcr-cps-let ((_load_messages (dante-async-load-current-buffer t))
-;;                         (ty (dante-async-call (concat ":type-at " tap))))
-;;           (when (eq (point) dante-idle-point)
-;;             (unless (current-message)
-;;               (message "%s" (s-collapse-whitespace (dante-fontify-expression ty)))))
-;;           )))))
-;; (when dante-timer (cancel-timer dante-timer))
-;; (setq dante-timer (run-with-idle-timer 1 t #'dante-idle-function))
+(defcustom dante-tap-type-time nil
+"Delay after to display type of the thing at point, in seconds.
+Use nil to disable." :type 'integer :group 'dante)
+(defvar dante-timer nil)
+(defvar dante-last-valid-idle-type-message nil)
+
+(defvar-local dante-idle-point nil "point when idler kicked in.")
+
+(defun dante-idle-function ()
+  "Eldoc-like support function."
+  (when (and dante-mode ;; don't start GHCi if dante is not on.
+             (dante-buffer-p) ;; buffer exists
+             (with-current-buffer (dante-buffer-p)
+               (not (eq dante-state 'dead))) ;; GHCi alive?
+             (not lcr-process-callback)) ;; Is GHCi idle?
+    (let ((tap (dante--ghc-subexp (dante-thing-at-point))))
+      (unless (or (nth 4 (syntax-ppss)) (nth 3 (syntax-ppss)) (s-blank? tap)) ;; not in a comment or string
+        (setq-local dante-idle-point (point))
+        (lcr-cps-let ((_load_messages (dante-async-load-current-buffer t))
+                        (ty (dante-async-call (concat ":type-at " tap))))
+          (when (and (let ((cur-msg (current-message)))
+                       (or (not cur-msg)
+                           (string-match-p (concat "^Wrote " (buffer-file-name)) cur-msg)
+                           (and dante-last-valid-idle-type-message
+                                (string-equal dante-last-valid-idle-type-message cur-msg))))
+                     ;; echo area is free, or the buffer was just saved from having triggered a check, or the queue had many requests for idle display and is displaying the last fulfilled idle type request
+                     (not (s-match "^<interactive>" ty)) ;; no error
+                     (eq (point) dante-idle-point)) ;; cursor did not move
+              (setq dante-last-valid-idle-type-message (s-collapse-whitespace (dante-fontify-expression ty)))
+              (message "%s" dante-last-valid-idle-type-message)))))))
+(when dante-timer (cancel-timer dante-timer))
+(when dante-tap-type-time
+  (setq dante-timer (run-with-idle-timer dante-tap-type-time t #'dante-idle-function)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Reploid
@@ -871,7 +889,7 @@ Calls DONE when done.  BLOCK-END is a marker for the end of the evaluation block
   "Run a check and pass the status onto REPORT-FN."
   (if (eq (dante-get-var 'dante-state) 'dead) (funcall report-fn :panic :explanation "Ghci is dead")
     (lcr-cps-let ((messages (dante-async-load-current-buffer nil)))
-      (let* ((temp-file (dante-local-name (buffer-file-name (current-buffer))))
+      (let* ((temp-file (dante-local-name (dante-temp-file-name (current-buffer))))
              (diags (-non-nil (--map (dante-fm-message it (current-buffer) temp-file) messages))))
         (funcall report-fn diags)))))
 
