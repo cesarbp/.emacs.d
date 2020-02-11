@@ -102,12 +102,14 @@ By default these are:
   '(("^[ \t]*--.*" . font-lock-comment-face)
     ("^ *\\([^ \t:]+\\):" (1 font-lock-keyword-face))
     ("^\\(Library\\)[ \t]*\\({\\|$\\)" (1 font-lock-keyword-face))
-    ("^\\(Executable\\|Test-Suite\\|Benchmark\\|Common\\)[ \t]+\\([^\n \t]*\\)"
+    ("^\\(Executable\\|Test-Suite\\|Benchmark\\|Common\\|package\\)[ \t]+\\([^\n \t]*\\)"
      (1 font-lock-keyword-face) (2 font-lock-function-name-face))
-    ("^\\(Flag\\)[ \t]+\\([^\n \t]*\\)"
+    ("^\\(Flag\\|install-dirs\\|repository\\)[ \t]+\\([^\n \t]*\\)"
      (1 font-lock-keyword-face) (2 font-lock-constant-face))
     ("^\\(Source-Repository\\)[ \t]+\\(head\\|this\\)"
      (1 font-lock-keyword-face) (2 font-lock-constant-face))
+    ("^\\(haddock\\|source-repository-package\\|program-locations\\|program-default-options\\)\\([ \t]\\|$\\)"
+     (1 font-lock-keyword-face))
     ("^ *\\(if\\)[ \t]+.*\\({\\|$\\)" (1 font-lock-keyword-face))
     ("^ *\\(}[ \t]*\\)?\\(else\\)[ \t]*\\({\\|$\\)"
      (2 font-lock-keyword-face))
@@ -138,7 +140,7 @@ it from list if one of the following conditions are hold:
   (haskell-cabal-buffers-clean (current-buffer)))
 
 ;;;###autoload
-(add-to-list 'auto-mode-alist '("\\.cabal\\'" . haskell-cabal-mode))
+(add-to-list 'auto-mode-alist '("\\.cabal\\'\\|/cabal\\.project\\|/\\.cabal/config\\'" . haskell-cabal-mode))
 
 (defvar haskell-cabal-mode-map
   (let ((map (make-sparse-keymap)))
@@ -462,8 +464,11 @@ OTHER-WINDOW use `find-file-other-window'."
             :beginning (match-end 0)
             :end (save-match-data (haskell-cabal-subsection-end))
             :data-start-column (save-excursion (goto-char (match-end 0))
-                                               (current-column)
-                                               )))))
+                                               (current-column))
+            :data-indent-column (save-excursion (goto-char (match-end 0))
+                                                (when (looking-at "\n  +\\(\\w*\\)") (goto-char (match-beginning 1)))
+                                                (current-column)
+                                                )))))
 
 
 (defun haskell-cabal-section-name (section)
@@ -477,6 +482,9 @@ OTHER-WINDOW use `find-file-other-window'."
 
 (defun haskell-cabal-section-data-start-column (section)
   (plist-get section :data-start-column))
+
+(defun haskell-cabal-section-data-indent-column (section)
+  (plist-get section :data-indent-column))
 
 (defun haskell-cabal-map-component-type (component-type)
   "Map from cabal file COMPONENT-TYPE to build command component-type."
@@ -918,7 +926,7 @@ resulting buffer-content.  Unmark line at the end."
 (defun haskell-cabal-line-filename ()
   "Expand filename in current line according to the subsection type
 
-Module names in exposed-modules and other-modules are expanded by replacing each dot (.) in the module name with a foward slash (/) and appending \".hs\"
+Module names in exposed-modules and other-modules are expanded by replacing each dot (.) in the module name with a forward slash (/) and appending \".hs\"
 
 Example: Foo.Bar.Quux ==> Foo/Bar/Quux.hs
 
@@ -1039,7 +1047,7 @@ Source names from main-is and c-sources sections are left untouched
   (cl-case (haskell-cabal-classify-line)
     (section-data
      (save-excursion
-       (let ((indent (haskell-cabal-section-data-start-column
+       (let ((indent (haskell-cabal-section-data-indent-column
                       (haskell-cabal-subsection))))
          (indent-line-to indent)
          (beginning-of-line)
