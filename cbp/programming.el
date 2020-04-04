@@ -135,7 +135,8 @@
 (add-to-list 'auto-mode-alist '("\\.wl$" . wolfram-mode))
 
 ;;; Rust and LSP
-;(setq rust-format-on-save t)
+(require 'rust-mode)
+(setq rust-format-on-save t)
 (define-key rust-mode-map (kbd "C-c C-c") 'rust-run)
-(add-hook rust-mode-hook #'lsp)
+(add-hook 'rust-mode-hook #'lsp)
 (setq lsp-keymap-prefix "s-l")
