@@ -44,7 +44,7 @@
     (apply 'nconc (mapcar do-glob globs))))
 
 ;; now add all my pkg lisp directories
-(let* ((globs '("*" "*/lisp"))
+(let* ((globs '("*" "*/lisp" "*/src/elisp"))
        (dirs (expand-all-globs emacs-pkg-dir globs)))
   (dolist (dir dirs)
     (when (file-directory-p dir)
