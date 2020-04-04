@@ -171,7 +171,10 @@
       inhibit-startup-message t
       tab-always-indent 'complete
       shell-command-switch "-ic"
-      gc-cons-threshold 20000000
+      ;; 200mb
+      gc-cons-threshold 200000000
+      ;; data that emacs reads from processes 5 mb
+      read-process-output-max (* 5 1024 1024)
       reb-re-syntax 'string  ; re-builder
       )
 
