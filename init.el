@@ -13,7 +13,7 @@
       (source-code (font-spec :name "Source Code Pro"))
       (ubuntu (font-spec :name "Ubuntu Mono")))
   (cond ((find-font sf-mono)
-         (set-face-attribute 'default nil :font sf-mono :height 92))
+         (set-face-attribute 'default nil :font sf-mono :height 120))
         ((find-font source-code)
          (set-face-attribute 'default nil :font source-code :height 120))
 	((find-font ubuntu)
