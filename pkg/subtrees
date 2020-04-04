@@ -91,3 +91,4 @@ https://github.com/hlissner/emacs-doom-themes master
 https://github.com/rust-lang/rust-mode master
 https://github.com/emacs-lsp/lsp-mode master
 https://github.com/emacs-lsp/lsp-ui master
+https://github.com/tigersoldier/company-lsp 2.1.0
