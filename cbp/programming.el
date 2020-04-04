@@ -133,3 +133,9 @@
 (autoload 'run-wolfram "wolfram-mode" nil t)
 (setq wolfram-program "/Applications/Wolfram Engine.app/Contents/Resources/Wolfram Player.app/Contents/MacOS/MathKernel")
 (add-to-list 'auto-mode-alist '("\\.wl$" . wolfram-mode))
+
+;;; Rust and LSP
+;(setq rust-format-on-save t)
+(define-key rust-mode-map (kbd "C-c C-c") 'rust-run)
+(add-hook rust-mode-hook #'lsp)
+(setq lsp-keymap-prefix "s-l")
