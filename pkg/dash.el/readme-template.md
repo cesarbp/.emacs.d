@@ -1,10 +1,10 @@
-# <img align="right" src="https://raw.github.com/magnars/dash.el/master/rainbow-dash.png"> dash.el [![Build Status](https://secure.travis-ci.org/magnars/dash.el.png)](http://travis-ci.org/magnars/dash.el)
+# <img align="right" src="https://raw.github.com/magnars/dash.el/master/rainbow-dash.png"> dash.el ![GitHub Workflow Status](https://img.shields.io/github/workflow/status/magnars/dash.el/CI)
 
 A modern list api for Emacs. No 'cl required.
 
 ## Installation
 
-It's available on [marmalade](http://marmalade-repo.org/) and [Melpa](https://melpa.org/):
+It's available on [Melpa](https://melpa.org/):
 
     M-x package-install dash
 
@@ -19,18 +19,19 @@ If you want the function combinators, then also:
 
 Add this to the big comment block at the top:
 
-    ;; Package-Requires: ((dash "2.14.1"))
+    ;; Package-Requires: ((dash "[[ version ]]"))
 
 To get function combinators:
 
-    ;; Package-Requires: ((dash "2.14.1") (dash-functional "1.2.0") (emacs "24"))
+    ;; Package-Requires: ((dash "[[ version ]]") (dash-functional "1.2.0") (emacs "24"))
 
 ## Upcoming breaking change!
 
 - For backward compatibility reasons `-zip` return a cons-cell instead of a list
   with two elements when called on two lists. This is a clunky API, and in an
   upcoming 3.0 release of Dash it will always return a list. If you rely on the
-  cons-cell return value, use `-zip-pair` instead.
+  cons-cell return value, use `-zip-pair` instead.  During the 2.x
+  release cycle the new API is available as `-zip-lists`.
 
 ## Syntax highlighting of dash functions
 
@@ -97,6 +98,33 @@ Oh, and don't edit `README.md` directly, it is auto-generated.
 Change `readme-template.md` or `examples-to-docs.el` instead.
 
 ## Changelist
+
+### From 2.16 to 2.17
+
+- Speed up `-uniq` by using hash-tables when possible (@cireu, #305)
+- Fix `-inits` to be non-destructive (@SwiftLawnGnome, #313)
+- Fix indent rules for `-some->` and family (@wbolster, #321)
+- Add `-zip-lists` which always returns list of lists, even for two
+  input lists (see issue #135).
+
+### From 2.15 to 2.16
+
+- Added `--doto`, anaphoric version of `-doto` (#282)
+- Aliased `-cons-pair-p` to `-cons-pair?`(#288)
+- Generalized `-rotate` for |n| greater than the length of the list (@leungbk, #290)
+- Added a mechanism to extend destructuring with custom matchers (@yyoncho, #277)
+
+### From 2.14 to 2.15
+
+This release brings new destructuring features, some new control flow
+functions and performance optimizations.
+
+- Added `-setq` with destructuring binding support similar to `-let` family ([#116](https://github.com/magnars/dash.el/issues/116))
+- Added smarter key destructuring in `-let` and friends where variables are auto-derived from keys ([#111](https://github.com/magnars/dash.el/issues/111))
+- Allow `-let` bindings with place only ([#256](https://github.com/magnars/dash.el/issues/256))
+- Added `-each-r` and `-each-r-while` (@doublep, [#159](https://github.com/magnars/dash.el/issues/159))
+- Added `-common-suffix` (@basil-conto, [#263](https://github.com/magnars/dash.el/issues/263))
+- Improved performance of folds (`-reduce` and friends) (@basil-conto, [#264](https://github.com/magnars/dash.el/issues/264))
 
 ### From 2.13 to 2.14
 
@@ -265,6 +293,7 @@ things compatible but no future guarantees are made.
  - [William West](https://github.com/occidens) made `-fixfn` more robust at handling floats.
  - [Cam Saül](https://github.com/camsaul) contributed `-some->`, `-some->>`, and `-some-->`.
  - [Basil L. Contovounesios](https://github.com/basil-conto) contributed `-common-prefix`.
+ - [Paul Pogonyshev](https://github.com/doublep) contributed `-each-r` and `-each-r-while`.
 
 Thanks!
 
