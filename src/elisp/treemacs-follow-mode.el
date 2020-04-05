@@ -1,6 +1,6 @@
 ;;; treemacs.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2019 Alexander Miller
+;; Copyright (C) 2020 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 ;;; Follow mode definition.
@@ -31,6 +31,9 @@
 (require 'treemacs-core-utils)
 (eval-and-compile
   (require 'treemacs-macros))
+
+(treemacs-import-functions-from "dired"
+  dired-current-directory)
 
 (defvar treemacs--ready-to-follow nil
   "Signals to `treemacs-follow-mode' if a follow action may be run.
@@ -53,12 +56,14 @@ not visible."
     (treemacs-without-following
      (let* ((treemacs-window (treemacs-get-local-window))
             (current-buffer  (current-buffer))
-            (current-file    (-some-> current-buffer (buffer-file-name) (file-truename))))
+            (current-file    (or (buffer-file-name current-buffer)
+                                 (when (eq major-mode 'dired-mode)
+                                   (treemacs--canonical-path (dired-current-directory))))))
        (when (and treemacs-window
                   current-file
                   (not (s-starts-with? treemacs--buffer-name-prefix (buffer-name current-buffer)))
                   (f-exists? current-file))
-         (-when-let (project-for-file (treemacs--find-project-for-buffer))
+         (-when-let (project-for-file (treemacs--find-project-for-buffer current-file))
            (with-selected-window treemacs-window
              (-let [selected-file (--if-let (treemacs-current-button)
                                       (treemacs--nearest-path it)

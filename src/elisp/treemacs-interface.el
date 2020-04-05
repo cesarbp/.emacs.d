@@ -1,6 +1,6 @@
 ;;; treemacs.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2019 Alexander Miller
+;; Copyright (C) 2020 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 ;;; Not autoloaded, but user-facing functions.
@@ -21,7 +21,6 @@
 ;;; Code:
 
 (require 'hl-line)
-(require 'bookmark)
 (require 'button)
 (require 'f)
 (require 's)
@@ -29,6 +28,7 @@
 (require 'treemacs-core-utils)
 (require 'treemacs-filewatch-mode)
 (require 'treemacs-rendering)
+(require 'treemacs-scope)
 (require 'treemacs-follow-mode)
 (require 'treemacs-tag-follow-mode)
 (require 'treemacs-mouse-interface)
@@ -39,6 +39,8 @@
 (eval-and-compile
   (require 'cl-lib)
   (require 'treemacs-macros))
+
+(autoload 'ansi-color-apply-on-region "ansi-color")
 
 (treemacs-import-functions-from "treemacs"
   treemacs-select-window)
@@ -299,20 +301,18 @@ This function's exact configuration is stored in `treemacs-RET-actions-config'."
   "Define the behaviour of `treemacs-RET-action'.
 Determines that a button with a given STATE should lead to the execution of
 ACTION.
-
-First deletes the previous entry with key STATE from
-`treemacs-RET-actions-config'and then inserts the new tuple."
-  (setq treemacs-RET-actions-config (assq-delete-all state treemacs-RET-actions-config))
+The list of possible states can be found in `treemacs-valid-button-states'.
+ACTION should be one of the `treemacs-visit-node-*' commands."
+  (setf treemacs-RET-actions-config (assq-delete-all state treemacs-RET-actions-config))
   (push (cons state action) treemacs-RET-actions-config))
 
 (defun treemacs-define-TAB-action (state action)
   "Define the behaviour of `treemacs-TAB-action'.
 Determines that a button with a given STATE should lead to the execution of
 ACTION.
-
-First deletes the previous entry with key STATE from
-`treemacs-TAB-actions-config' and then inserts the new tuple."
-  (setq treemacs-TAB-actions-config (assq-delete-all state treemacs-TAB-actions-config))
+The list of possible states can be found in `treemacs-valid-button-states'.
+ACTION should be one of the `treemacs-visit-node-*' commands."
+  (setf treemacs-TAB-actions-config (assq-delete-all state treemacs-TAB-actions-config))
   (push (cons state action) treemacs-TAB-actions-config))
 
 (defun treemacs-visit-node-in-external-application ()
@@ -346,7 +346,7 @@ With a prefix ARG call `treemacs-kill-buffer' instead."
 (defun treemacs-kill-buffer ()
   "Kill the treemacs buffer."
   (interactive)
-  (when (eq 'treemacs-mode major-mode)
+  (when treemacs--in-this-buffer
     ;; teardown logic handled in kill hook
     (if (one-window-p)
         (kill-this-buffer)
@@ -359,34 +359,42 @@ A delete action must always be confirmed. Directories are deleted recursively.
 By default files are deleted by moving them to the trash. With a prefix ARG they
 will instead be wiped irreversibly."
   (interactive "P")
-  (-if-let (btn (treemacs-current-button))
-      (if (not (memq (treemacs-button-get btn :state) '(file-node-open file-node-closed dir-node-open dir-node-closed)))
-          (treemacs-pulse-on-failure "Only files and directories can be deleted.")
-        (let* ((delete-by-moving-to-trash (not arg))
-               (path (treemacs-button-get btn :path))
-               (file-name (treemacs--filename path)))
-          (when
-              (cond
-               ((f-file? path)
-                (when (yes-or-no-p (format "Delete %s ? " file-name))
-                  (treemacs--without-filewatch (delete-file path delete-by-moving-to-trash))
-                  t))
-               ((f-directory? path)
-                (when (yes-or-no-p (format "Recursively delete %s ? " file-name))
-                  (treemacs--without-filewatch (delete-directory path t delete-by-moving-to-trash))
-                  t))
-               (t (progn
-                    (treemacs-pulse-on-failure
-                        "Item is neither a file, nor a directory - treemacs does not know how to delete it. (Maybe it no longer exists?)")
-                    nil)))
-            (treemacs--on-file-deletion path)
-            (treemacs-without-messages
-             (treemacs-run-in-every-buffer
-              (-when-let (project (treemacs--find-project-for-path path))
-                (when (treemacs-is-path-visible? path)
-                  (treemacs--do-refresh (current-buffer) project))))))))
-    (treemacs-pulse-on-failure "Nothing to delete here."))
-  (treemacs--evade-image))
+  (treemacs-block
+   (treemacs-unless-let (btn (treemacs-current-button))
+       (treemacs-pulse-on-failure "Nothing to delete here.")
+     (treemacs-error-return-if (not (memq (treemacs-button-get btn :state)
+                                          '(file-node-open file-node-closed dir-node-open dir-node-closed)))
+       "Only files and directories can be deleted.")
+     (treemacs--without-filewatch
+      (let* ((delete-by-moving-to-trash (not arg))
+             (path (treemacs-button-get btn :path))
+             (file-name (propertize (treemacs--filename path) 'face 'font-lock-string-face)))
+        (cond
+         ((f-symlink? path)
+          (when (yes-or-no-p (format "Remove link '%s -> %s' ? "
+                                     file-name
+                                     (propertize (file-symlink-p path) 'face 'font-lock-face)))
+            (delete-file path delete-by-moving-to-trash)
+            t))
+         ((f-file? path)
+          (when (yes-or-no-p (format "Delete '%s' ? " file-name))
+            (delete-file path delete-by-moving-to-trash)
+            t))
+         ((f-directory? path)
+          (when (yes-or-no-p (format "Recursively delete '%s' ? " file-name))
+            (delete-directory path t delete-by-moving-to-trash)
+            t))
+         (t
+          (treemacs-error-return
+              (treemacs-pulse-on-failure
+                  "Item is neither a file, a link or a directory - treemacs does not know how to delete it. (Maybe it no longer exists?)"))))
+        (treemacs--on-file-deletion path)
+        (treemacs-without-messages
+         (treemacs-run-in-every-buffer
+          (treemacs-delete-single-node path)))
+        (treemacs-log "Deleted %s."
+          (propertize path 'face 'font-lock-string-face))))
+     (treemacs--evade-image))))
 
 (defun treemacs-create-file ()
   "Create a new file.
@@ -436,7 +444,7 @@ likewise be updated."
        (treemacs--replace-recentf-entry old-path new-path)
        (-let [treemacs-silent-refresh t]
          (treemacs-run-in-every-buffer
-          (treemacs--on-rename old-path new-path)
+          (treemacs--on-rename old-path new-path treemacs-filewatch-mode)
           (treemacs--do-refresh (current-buffer) project)))
        (treemacs--reload-buffers-after-rename old-path new-path)
        (treemacs-goto-file-node new-path project)
@@ -605,30 +613,6 @@ Instead of calling this with a prefix arg you can also direcrly call
                      (propertize sort-name 'face 'font-lock-type-face)))))
   (treemacs--evade-image))
 
-(defun treemacs-add-bookmark ()
-  "Add the current node to Emacs' list of bookmarks.
-For file and directory nodes their absolute path is saved. Tag nodes
-additionally also save the tag's position. A tag can only be bookmarked if the
-treemacs node is pointing to a valid buffer position."
-  (interactive)
-  (treemacs-with-current-button
-   "There is nothing to bookmark here."
-   (pcase (treemacs-button-get current-btn :state)
-     ((or 'file-node-open 'file-node-closed 'dir-node-open 'dir-node-closed)
-      (-let [name (read-string "Bookmark name: ")]
-        (bookmark-store name `((filename . ,(treemacs-button-get current-btn :path))) nil)))
-     ('tag-node
-      (-let [(tag-buffer . tag-pos) (treemacs--extract-position (treemacs-button-get current-btn :marker))]
-        (if (buffer-live-p tag-buffer)
-            (bookmark-store
-             (read-string "Bookmark name: ")
-             `((filename . ,(buffer-file-name tag-buffer))
-               (position . ,tag-pos))
-             nil)
-          (treemacs-log "Tag info can not be saved because it is not pointing to a live buffer."))))
-     ((or 'tag-node-open 'tag-node-closed)
-      (treemacs-pulse-on-failure "There is nothing to bookmark here.")))))
-
 (defun treemacs-next-line-other-window (&optional count)
   "Scroll forward COUNT lines in `next-window'."
   (interactive "p")
@@ -698,6 +682,9 @@ For slower scrolling see `treemacs-previous-line-other-window'"
              (new-name (read-string "New name: " (treemacs-project->name project))))
         (treemacs-save-position
          (progn
+           (treemacs-return-if (treemacs--is-name-invalid? new-name)
+             (treemacs-pulse-on-failure "'%s' is an invalid name."
+               (propertize new-name 'face 'font-lock-type-face)))
            (treemacs-return-if (string-equal old-name new-name)
              (treemacs-pulse-on-failure "The new name is the same as the old name."))
            (setf (treemacs-project->name project) new-name)
@@ -709,6 +696,7 @@ For slower scrolling see `treemacs-previous-line-other-window'"
            (when (eq state 'root-node-open)
              (treemacs--collapse-root-node (treemacs-project->position project))
              (treemacs--expand-root-node (treemacs-project->position project))))
+         (run-hook-with-args 'treemacs-rename-project-functions project old-name)
          (treemacs-pulse-on-success "Renamed project %s to %s."
            (propertize old-name 'face 'font-lock-type-face)
            (propertize new-name 'face 'font-lock-type-face)))))))
@@ -728,7 +716,7 @@ auto-selected name already exists."
       (setf name default-name)))
   (pcase (treemacs-do-add-project-to-workspace path name)
     (`(success ,project)
-     (treemacs-pulse-on-success "Added project %s to the workspace."
+     (treemacs-pulse-on-success "Added project '%s' to the workspace."
        (propertize (treemacs-project->name project) 'face 'font-lock-type-face)))
     (`(invalid-path ,reason)
      (treemacs-pulse-on-failure (concat "Path '%s' is invalid: %s")
@@ -739,8 +727,13 @@ auto-selected name already exists."
        (propertize name 'face 'font-lock-string-face)))
     (`(duplicate-project ,duplicate)
      (goto-char (treemacs-project->position duplicate))
-     (treemacs-pulse-on-success "A project for %s already exists."
+     (treemacs-pulse-on-failure "A project for '%s' already exists. Projects may not overlap."
        (propertize (treemacs-project->path duplicate) 'face 'font-lock-string-face)))
+    (`(includes-project ,project)
+     (goto-char (treemacs-project->position project))
+     (treemacs-pulse-on-failure "Project '%s' is included in '%s'. Projects May not overlap."
+       (propertize (treemacs-project->name project) 'face 'font-lock-type-face)
+       (propertize path 'face 'font-lock-string-face)))
     (`(duplicate-name ,duplicate)
      (goto-char (treemacs-project->position duplicate))
      (treemacs-pulse-on-failure "A project with the name %s already exists."
@@ -800,26 +793,39 @@ With a prefix ARG select project to remove by name."
     ('only-one-workspace
      (treemacs-pulse-on-failure "There are no other workspaces to select."))
     (`(success ,workspace)
-     (let ((window-visible? nil)
-           (buffer-exists? nil))
-       (pcase (treemacs-current-visibility)
-         ('visible
-          (setq window-visible? t
-                buffer-exists? t))
-         ('exists
-          (setq buffer-exists? t)))
-       (when window-visible?
-         (delete-window (treemacs-get-local-window)))
-       (when buffer-exists?
-         (kill-buffer (treemacs-get-local-buffer)))
-       (when buffer-exists?
-         (let ((treemacs-follow-after-init nil)
-               (treemacs-follow-mode nil))
-           (treemacs-select-window)))
-       (when (not window-visible?)
-         (bury-buffer)))
      (treemacs-pulse-on-success "Selected workspace %s."
        (propertize (treemacs-workspace->name workspace))))))
+
+(defun treemacs-set-fallback-workspace (&optional arg)
+  "Set the current workspace as the default fallback.
+With a non-nil prefix ARG choose the fallback instead.
+
+The fallback workspace is the one treemacs will select when it is opened for the
+first time and the current file at the time is not part of any of treemacs'
+workspaces."
+  (interactive "P")
+  (treemacs-block
+   (-let [fallback (if arg (treemacs--select-workspace-by-name) (treemacs-current-workspace))]
+     (treemacs-error-return-if (null fallback)
+       "There is no workspace with that name.")
+     (setf treemacs--workspaces
+           (sort treemacs--workspaces
+                 (lambda (ws _) (equal ws fallback))))
+     (treemacs--persist)
+     (treemacs-pulse-on-success "Selected workspace %s as fallback."
+       (propertize (treemacs-workspace->name fallback) 'face 'font-lock-type-face)))))
+
+(defun treemacs-rename-workspace ()
+  "Select a workspace to rename."
+  (interactive)
+  (pcase (treemacs-do-rename-workspace)
+    (`(success ,old-name ,workspace)
+     (treemacs-pulse-on-success "Workspace %s successfully renamed to %s."
+       (propertize old-name 'face 'font-lock-type-face)
+       (propertize (treemacs-workspace->name workspace) 'face 'font-lock-type-face)))
+    (`(invalid-name ,name)
+     (treemacs-pulse-on-failure "Name '%s' is invalid."
+       (propertize name 'face 'font-lock-string-face)))))
 
 (defun treemacs-refresh ()
   "Refresh the project at point."
@@ -880,7 +886,7 @@ really (or rather permanently) opened - any command other than `treemacs-peek',
 `treemacs-next-page-other-window' or `treemacs-previous-page-other-window' will
 cause it to be closed again and the previously shown buffer to be restored. The
 buffer visiting the peeked file will also be killed again, unless it was already
-open before eing used for peeking."
+open before being used for peeking."
   (interactive)
   (treemacs--execute-button-action
    :save-window t
@@ -911,8 +917,8 @@ Only works with a single project in the workspace."
             (treemacs-pulse-on-success nil))
        (unless (treemacs-is-path old-root :same-as new-root)
          (treemacs-do-remove-project-from-workspace project)
+         (treemacs--reset-dom) ;; remove also the previous root's dom entry
          (treemacs-do-add-project-to-workspace new-root new-name)
-         (treemacs-goto-file-node new-root)
          (treemacs-goto-file-node old-root))))))
 
 (defun treemacs-root-down ()
@@ -931,6 +937,7 @@ Only works with a single project in the workspace."
               (treemacs--no-messages t)
               (treemacs-pulse-on-success nil))
           (treemacs-do-remove-project-from-workspace (treemacs-project-at-point))
+          (treemacs--reset-dom) ;; remove also the previous root's dom entry
           (treemacs-do-add-project-to-workspace new-root (file-name-nondirectory new-root))
           (treemacs-goto-file-node new-root)
           (treemacs-toggle-node)))
@@ -1036,11 +1043,17 @@ Only works with a single project in the workspace."
        (`(error ,err-line ,err-msg)
         (treemacs--org-edit-display-validation-msg err-msg err-line))
        ('success
+        (treemacs--invalidate-buffer-project-cache)
         (f-write (apply #'concat (--map (concat it "\n") lines)) 'utf-8 treemacs-persist-file)
         (kill-buffer)
         (treemacs--restore)
+        (-if-let (ws (treemacs--select-workspace-by-name
+                      (treemacs-workspace->name (treemacs-current-workspace))))
+            (setf (treemacs-current-workspace) ws)
+          (treemacs--find-workspace))
         (treemacs--consolidate-projects)
         (-some-> (get-buffer treemacs--org-edit-buffer-name) (kill-buffer))
+        (run-hooks 'treemacs-workspace-edit-hook)
         (treemacs-log "Edit completed successfully."))))))
 
 (defun treemacs-collapse-parent-node (arg)
@@ -1057,6 +1070,120 @@ Prefix ARG will be passed on to the closing function
         (treemacs--evade-image))
     (treemacs-pulse-on-failure
         (if btn "Already at root." "There is nothing to close here."))))
+
+(defun treemacs-run-shell-command-in-project-root (&optional arg)
+  "Run an asynchronous shell command in the root of the current project.
+Output will only be saved and displayed if prefix ARG is non-nil.
+
+Every instance of the string `$path' will be replaced with the (properly quoted)
+absolute path of the project root."
+  (interactive "P")
+  (let* ((cmd (read-shell-command "Command: "))
+         (name "*Treemacs Shell Command*")
+         (node (treemacs-node-at-point))
+         (buffer (progn (--when-let (get-buffer name)
+                          (kill-buffer it))
+                        (get-buffer-create name)))
+         (working-dir nil))
+    (treemacs-block
+     (treemacs-error-return-if (null node)
+       (treemacs-pulse-on-failure "There is no project here."))
+     (-let [project (treemacs-project-of-node node)]
+       (treemacs-error-return-if (treemacs-project->is-unreadable? project)
+         (treemacs-pulse-on-failure "Project path is not readable."))
+       (setf working-dir (treemacs-project->path project)
+             cmd (s-replace "$path" (shell-quote-argument working-dir) cmd))
+       (pfuture-callback `(,shell-file-name ,shell-command-switch ,cmd)
+         :name name
+         :buffer buffer
+         :directory working-dir
+         :on-success
+         (if arg
+             (progn
+               (pop-to-buffer pfuture-buffer)
+               (require 'ansi-color)
+               (ansi-color-apply-on-region (point-min) (point-max)))
+           (treemacs-log "Shell command completed successfully.")
+           (kill-buffer buffer))
+         :on-error
+         (progn
+           (treemacs-log "Shell command failed with exit code %s and output:" (process-exit-status process))
+           (message "%s" (pfuture-callback-output))
+           (kill-buffer buffer)))))))
+
+(defun treemacs-run-shell-command-for-current-node (&optional arg)
+  "Run a shell command on the current node.
+Output will only be saved and displayed if prefix ARG is non-nil.
+
+Will use the location of the current node as working directory. If the current
+node is not a file/dir, then the next-closest file node will be used. If all
+nodes are non-files, or if there is no node at point, $HOME will be set as the
+working directory.
+
+Every instance of the string `$path' will be replaced with the (properly quoted)
+absolute path of the node (if it is present)."
+  (interactive "P")
+  (let* ((cmd (read-shell-command "Command: "))
+         (name "*Treemacs Shell Command*")
+         (node (treemacs-node-at-point))
+         (buffer (progn (--when-let (get-buffer name)
+                          (kill-buffer it))
+                        (get-buffer-create name)))
+         (working-dir (-some-> node (treemacs-button-get :path))))
+    (cond
+     ((null node)
+      (setf working-dir "~/"))
+     ((or (null working-dir) (not (file-exists-p working-dir)))
+      (setf working-dir (treemacs--nearest-path node))
+      (when (or (null working-dir)
+                (not (file-exists-p working-dir)))
+        (setf working-dir "~/")))
+     (t
+      (setf working-dir (treemacs--parent working-dir))))
+    (when (and node (treemacs-is-node-file-or-dir? node))
+      (setf cmd (s-replace "$path" (shell-quote-argument (treemacs-button-get node :path)) cmd)))
+    (pfuture-callback `(,shell-file-name ,shell-command-switch ,cmd)
+      :name name
+      :buffer buffer
+      :directory working-dir
+      :on-success
+      (if arg
+          (progn
+            (pop-to-buffer pfuture-buffer)
+             (require 'ansi-color)
+             (autoload 'ansi-color-apply-on-region "ansi-color")
+             (ansi-color-apply-on-region (point-min) (point-max)))
+        (treemacs-log "Shell command completed successfully.")
+        (kill-buffer buffer))
+      :on-error
+      (progn
+        (treemacs-log "Shell command failed with exit code %s and output:" (process-exit-status process))
+        (message "%s" (pfuture-callback-output))
+        (kill-buffer buffer)))))
+
+(defun treemacs-select-scope-type ()
+  "Select the scope for treemacs buffers.
+The default (and only) option is scoping by frame, which means that every Emacs
+frame (and only an Emacs frame) will have its own unique treemacs buffer.
+Additional scope types can be enbaled by installing the appropriate package.
+
+The following packages offer additional scope types:
+ * treemacs-persp
+
+To programmatically set the scope type see `treemacs-set-scope-type'."
+  (interactive)
+  (let* ((selection (completing-read "Select Treemacs Scope: " treemacs-scope-types))
+         (new-scope-type (-> selection (intern) (assoc treemacs-scope-types) (cdr))))
+    (cond
+     ((null new-scope-type)
+      (treemacs-log "Nothing selected, type %s remains in effect."
+        (propertize selection 'face 'font-lock-type-face)))
+     ((eq new-scope-type treemacs--current-scope-type)
+      (treemacs-log "New scope type is same as old, nothing has changed."))
+     (t
+      (treemacs--do-set-scope-type new-scope-type)
+      (treemacs-log "Scope of type %s is now in effect."
+        (propertize selection 'face 'font-lock-type-face))))))
 
 (provide 'treemacs-interface)
 

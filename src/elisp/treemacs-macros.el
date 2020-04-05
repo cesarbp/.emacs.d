@@ -1,6 +1,6 @@
 ;;; treemacs.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2019 Alexander Miller
+;; Copyright (C) 2020 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 ;;; General purpose macros, and those used in, but defined outside of
@@ -30,6 +30,8 @@
 (eval-when-compile
   (require 'gv))
 
+(declare-function treemacs--scope-store "treemacs-scope")
+
 (defmacro treemacs-import-functions-from (file &rest functions)
   "Import FILE's FUNCTIONS.
 Creates a list of `declare-function' statements."
@@ -39,6 +41,7 @@ Creates a list of `declare-function' statements."
 
 (defmacro treemacs-log (msg &rest args)
   "Write a log statement given format string MSG and ARGS."
+  (declare (indent 1))
   `(unless treemacs--no-messages
      (message
       "%s %s"
@@ -108,14 +111,11 @@ Log ERROR-MSG if no button is selected, otherwise run BODY."
 
 (defmacro treemacs-without-following (&rest body)
   "Execute BODY with `treemacs--ready-to-follow' set to nil."
-  ;; no warnings since `treemacs--ready-to-follow' is defined in treemacs-follow-mode.el
-  ;; and should stay there since this file is for macros only
   (declare (debug t))
-  `(let ((o (with-no-warnings treemacs--ready-to-follow)))
-     (with-no-warnings (setq treemacs--ready-to-follow nil))
-     (unwind-protect
-         (progn ,@body)
-       (with-no-warnings (setq treemacs--ready-to-follow o)))))
+  `(let ((treemacs--ready-to-follow nil))
+     ;; ignore because not every module using this macro requires follow-mode.el
+     (ignore treemacs--ready-to-follow)
+     ,@body))
 
 (cl-defmacro treemacs-do-for-button-state
     (&key on-root-node-open
@@ -254,19 +254,20 @@ the on-delete code will run twice."
 Finally execute FINAL-FORM after the code to restore the position has run.
 
 This macro is meant for cases where a simple `save-excursion' will not do, like
-a refresh, which can potentially change the entire buffer layout. This means
-attempt first to keep point on the same file/tag, and if that does not work keep
-it on the same line."
+a refresh, which can potentially change the entire buffer layout. In pratice
+this means attempt first to keep point on the same file/tag, and if that does
+not work keep it on the same line."
   (declare (debug (form body)))
   `(treemacs-without-following
+    (declare-function treemacs--current-screen-line "treemacs-rendering")
     (let* ((curr-btn       (treemacs-current-button))
            (curr-point     (point-marker))
            (next-path      (-some-> curr-btn (treemacs--next-non-child-button) (button-get :path)))
            (prev-path      (-some-> curr-btn (treemacs--prev-non-child-button) (button-get :path)))
            (curr-node-path (-some-> curr-btn (treemacs-button-get :path)))
            (curr-state     (-some-> curr-btn (treemacs-button-get :state)))
-           (curr-file      (-some-> curr-btn (treemacs--nearest-path)))
-           (curr-tagpath   (-some-> curr-btn (treemacs--tags-path-of)))
+           (collapse       (-some-> curr-btn (treemacs-button-get :collapsed)))
+           (curr-file      (if collapse (treemacs-button-get curr-btn :key) (-some-> curr-btn (treemacs--nearest-path))))
            (curr-window    (treemacs-get-local-window))
            (curr-win-line  (when curr-window
                              (with-selected-window curr-window
@@ -302,8 +303,7 @@ it on the same line."
                    (setf detour (treemacs--parent detour)))
                  (treemacs-goto-file-node detour)))))))
         ((or 'tag-node-open 'tag-node-closed 'tag-node)
-         ;; no correction needed, if the tag does not exist point is left at the next best node
-         (treemacs--goto-tag-button-at curr-tagpath))
+         (treemacs-goto-node curr-node-path))
         ((pred null)
          (goto-char curr-point))
         (_
@@ -313,22 +313,39 @@ it on the same line."
              (treemacs-goto-node curr-node-path)
            (error (ignore)))))
       (treemacs--evade-image)
-      ,@final-form
       (when (get-text-property (point) 'invisible)
         (goto-char (next-single-property-change (point) 'invisible)))
       (when curr-win-line
-        (with-selected-window curr-window
-          ;; recenter starts counting at 0
-          (recenter (1- curr-win-line)))))))
+        (-let [buffer-point (point)]
+          (with-selected-window curr-window
+            ;; recenter starts counting at 0
+            (recenter (1- curr-win-line))
+            (set-window-point (selected-window) buffer-point))))
+      ,@final-form)))
 
 (defmacro treemacs-run-in-every-buffer (&rest body)
-  "Run BODY once locally in every treemacs buffer (and its frame)."
+  "Run BODY once locally in every treemacs buffer.
+Only includes treemacs filetree buffers, not extensions.
+Sets `treemacs-override-workspace' so calls to `treemacs-current-workspace'
+return the workspace of the active treemacs buffer."
   (declare (debug t))
-  `(pcase-dolist (`(,--frame-- . ,--buffer--) treemacs--buffer-access)
-     (when (buffer-live-p --buffer--)
-       (with-selected-frame --frame--
-         (with-current-buffer --buffer--
-           ,@body)))))
+  `(pcase-dolist (`(,_ . ,shelf) (treemacs--scope-store))
+     (let ((buffer (treemacs-scope-shelf->buffer shelf))
+           (workspace (treemacs-scope-shelf->workspace shelf)))
+       (when (buffer-live-p buffer)
+         (-let [treemacs-override-workspace workspace]
+           (ignore treemacs-override-workspace)
+           (with-current-buffer buffer
+             ,@body))))))
+
+(defmacro treemacs-run-in-all-derived-buffers (&rest body)
+  "Run BODY once locally in every treemacs buffer.
+Inluceds *all* treemacs-mode-derived buffers, including extensions."
+  (declare (debug t))
+  `(dolist (buffer (buffer-list))
+     (when (buffer-local-value 'treemacs--in-this-buffer buffer)
+       (with-current-buffer buffer
+         ,@body))))
 
 (defmacro treemacs--defstruct (name &rest properties)
   "Define a struct with NAME and PROPERTIES.
@@ -349,7 +366,8 @@ foregoing typechecking for its properties for the hope of improved performance."
                  (define-inline ,func-name (self)
                    ,(format "Get the '%s' property of `%s' SELF." prop-name name)
                    (declare (side-effect-free t))
-                   (inline-quote (aref ,',self ,(1+ it)))))))
+                   (inline-letevals (self)
+                     (inline-quote (aref ,',self ,(1+ it))))))))
           (number-sequence 0 (1- (length properties)))))))
 
 (defmacro treemacs-only-during-init (&rest body)
@@ -407,7 +425,7 @@ For the PREDICATE call the button being checked is bound as 'child-btn'."
             (depth (when child-btn (treemacs-button-get child-btn :depth))))
        (when (and child-btn
                   (equal (treemacs-button-get child-btn :parent) ,btn))
-         (if ,@predicate
+         (if (progn ,@predicate)
              (cl-return-from __search__ child-btn)
            (while child-btn
              (setq child-btn (next-button (treemacs-button-end child-btn)))
@@ -415,7 +433,7 @@ For the PREDICATE call the button being checked is bound as 'child-btn'."
                (-let [child-depth (treemacs-button-get child-btn :depth)]
                  (cond
                   ((= depth child-depth)
-                   (when ,@predicate (cl-return-from __search__ child-btn)) )
+                   (when (progn ,@predicate) (cl-return-from __search__ child-btn)) )
                   ((> depth child-depth)
                    (cl-return-from __search__ nil)))))))))))
 
@@ -517,6 +535,18 @@ If any of the IGNORED-ERRORS matches, the error is suppressed and nil returned."
               (unless (string-match-p ,(nth 1 ignore-spec) (error-message-string ,err))
                 (signal (car ,err) (cdr ,err)))))
           ignored-errors))))
+
+(defmacro treemacs-debounce (guard delay &rest body)
+  "Debounce a function call.
+Based on a timer GUARD variable run function BODY with the given DELAY."
+  (declare (indent 2))
+  `(unless ,guard
+     (setf ,guard
+           (run-with-idle-timer
+            ,delay nil
+            (lambda ()
+              ,@body
+              (setf ,guard nil))))))
 
 (provide 'treemacs-macros)
 

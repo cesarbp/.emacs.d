@@ -1,10 +1,10 @@
 ;;; treemacs-icons-dired.el --- Treemacs icons for dired -*- lexical-binding: t -*-
 
-;; Copyright (C) 2019 Alexander Miller
+;; Copyright (C) 2020 Alexander Miller
 
 ;; Author: Alexander Miller <alexanderm@web.de>
 ;; Package-Requires: ((treemacs "0.0") (emacs "25.2") (cl-lib "0.5"))
-;; Package-Version: 0
+;; Version: 0
 ;; Homepage: https://github.com/Alexander-Miller/treemacs
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -18,7 +18,7 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 ;;; Treemacs icons for dired. Code is based on all-the-icons-dired.el
@@ -121,15 +121,18 @@ This will make sure the icons' background colors will align with hl-line mode."
 
 ;;;###autoload
 (define-minor-mode treemacs-icons-dired-mode
-  "Display treemacs icons for each files in a dired buffer."
+  "Display treemacs icons for each file in a dired buffer."
   :require 'treemacs-icons-dired
   :init-value nil
   :global     t
   (if treemacs-icons-dired-mode
       (progn
+        (treemacs--setup-icon-background-colors)
         (add-hook 'dired-after-readin-hook #'treemacs-icons-dired--display)
         (add-hook 'dired-mode-hook #'treemacs--select-icon-set)
         (add-hook 'dired-mode-hook #'treemacs-icons-dired--enable-highlight-correction)
+        (advice-add 'ranger-setup :before #'treemacs--select-icon-set)
+        (advice-add 'ranger-setup :before #'treemacs-icons-dired--enable-highlight-correction)
         (dolist (buffer (buffer-list))
           (with-current-buffer buffer
             (when (derived-mode-p 'dired-mode)
@@ -138,6 +141,8 @@ This will make sure the icons' background colors will align with hl-line mode."
     (remove-hook 'dired-after-readin-hook #'treemacs-icons-dired--display)
     (remove-hook 'dired-mode-hook #'treemacs--select-icon-set)
     (remove-hook 'dired-mode-hook #'treemacs-icons-dired--enable-highlight-correction)
+    (advice-remove 'ranger-setup #'treemacs--select-icon-set)
+    (advice-remove 'ranger-setup #'treemacs-icons-dired--enable-highlight-correction)
     (dolist (buffer (buffer-list))
       (with-current-buffer buffer
         (when (derived-mode-p 'dired-mode)

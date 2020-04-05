@@ -1,11 +1,11 @@
 ;;; treemacs.el --- A tree style file explorer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2019 Alexander Miller
+;; Copyright (C) 2020 Alexander Miller
 
 ;; Author: Alexander Miller <alexanderm@web.de>
 ;; Package-Requires: ((emacs "25.2") (cl-lib "0.5") (dash "2.11.0") (s "1.10.0") (f "0.11.0") (ace-window "0.9.0") (pfuture "1.7") (hydra "0.13.2") (ht "2.2"))
 ;; Homepage: https://github.com/Alexander-Miller/treemacs
-;; Version: 2.6
+;; Version: 2.7
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 
@@ -29,7 +29,6 @@
 (require 'dash)
 (require 's)
 (require 'f)
-(require 'bookmark)
 (require 'treemacs-customization)
 (require 'treemacs-themes)
 (require 'treemacs-icons)
@@ -37,6 +36,7 @@
 (require 'treemacs-visuals)
 (require 'treemacs-rendering)
 (require 'treemacs-core-utils)
+(require 'treemacs-scope)
 (require 'treemacs-follow-mode)
 (require 'treemacs-filewatch-mode)
 (require 'treemacs-mode)
@@ -54,12 +54,9 @@
   (require 'cl-lib)
   (require 'treemacs-macros))
 
-(treemacs-only-during-init
- (treemacs--restore))
-
 (defconst treemacs-version
   (eval-when-compile
-    (format "v2.6-%s @ %s"
+    (format "v2.7-%s @ %s"
             (format-time-string "%Y.%m.%d" (current-time))
             emacs-version)))
 
@@ -84,40 +81,6 @@
     ('visible (delete-window (treemacs-get-local-window)))
     ('exists  (treemacs-select-window))
     ('none    (treemacs--init))))
-
-;;;###autoload
-(defun treemacs-bookmark (&optional arg)
-  "Find a bookmark in treemacs.
-Only bookmarks marking either a file or a directory are offered for selection.
-Treemacs will try to find and focus the given bookmark's location, in a similar
-fashion to `treemacs-find-file'.
-
-With a prefix argument ARG treemacs will also open the bookmarked location."
-  (interactive "P")
-  (treemacs-block
-   (-let [bookmarks
-          (cl-loop
-           for b in bookmark-alist
-           for name = (car b)
-           for location = (bookmark-location b)
-           when (or (f-file? location) (f-directory? location))
-           collect (propertize name 'location location))]
-     (treemacs-error-return-if (null bookmarks)
-       (treemacs-log "Didn't find any bookmarks pointing to files."))
-     (let* ((bookmark (completing-read "Bookmark: " bookmarks))
-            (location (f-long (get-text-property 0 'location (--first (string= it bookmark) bookmarks))))
-            (dir (if (f-directory? location) location (f-dirname location)))
-            (project (treemacs--find-project-for-path dir)))
-       (treemacs-error-return-if (null project)
-         "Bookmark at %s does not fall under any project in the workspace."
-         (propertize location 'face 'font-lock-string-face))
-       (pcase (treemacs-current-visibility)
-         ('visible (treemacs--select-visible-window))
-         ('exists  (treemacs--select-not-visible-window))
-         ('none    (treemacs--init)))
-       (treemacs-goto-file-node location project)
-       (treemacs-pulse-on-success)
-       (when arg (treemacs-visit-node-no-split))))))
 
 ;;;###autoload
 (defun treemacs-find-file (&optional arg)
@@ -206,10 +169,13 @@ treemacs buffer for this frame."
   (switch-to-buffer (get-buffer-create treemacs--org-edit-buffer-name))
   (erase-buffer)
   (org-mode)
+  (use-local-map (copy-keymap (with-no-warnings org-mode-map)))
+  (local-set-key (kbd "C-c C-c") #'treemacs-finish-edit)
   (insert "#+TITLE: Edit Treemacs Workspaces & Projects\n")
   (when treemacs-show-edit-workspace-help
-    (insert "# Call ~treemacs-finish-edit~ when done.\n")
-    (insert "# [[https://github.com/Alexander-Miller/treemacs#conveniently-editing-your-projects-and-workspaces][Click here for detailed documentation.]]\n\n"))
+    (insert "# Call ~treemacs-finish-edit~ or press ~C-c C-c~ when done.\n")
+    (insert "# [[https://github.com/Alexander-Miller/treemacs#conveniently-editing-your-projects-and-workspaces][Click here for detailed documentation.]]\n")
+    (insert "# To cancel you can simply kill this buffer.\n\n"))
   (insert-file-contents treemacs-persist-file)
   (with-no-warnings
     (outline-show-all))

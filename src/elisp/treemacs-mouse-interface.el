@@ -1,6 +1,6 @@
 ;;; treemacs.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2019 Alexander Miller
+;; Copyright (C) 2020 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 ;;; Functions relating to using the mouse in treemacs.
@@ -25,6 +25,7 @@
 (require 'hl-line)
 (require 'treemacs-core-utils)
 (require 'treemacs-tags)
+(require 'treemacs-scope)
 (require 'treemacs-follow-mode)
 (require 'treemacs-filewatch-mode)
 (eval-and-compile (require 'treemacs-macros))
@@ -62,7 +63,7 @@ Must be bound to a mouse click, or EVENT will not be supplied."
     (when (region-active-p)
       (keyboard-quit))
     (-when-let (state (treemacs--prop-at-point :state))
-      (--if-let (cdr (assq state treemacs-RET-actions-config))
+      (--if-let (cdr (assq state treemacs-doubleclick-actions-config))
           (progn
             (funcall it)
             (treemacs--evade-image))
@@ -113,9 +114,9 @@ Must be bound to a mouse click, or EVENT will not be supplied."
 Determines that a button with a given STATE should lead to the execution of
 ACTION.
 
-First deletes the previous entry with key STATE from
-`treemacs-doubleclick-actions-config' and then inserts the new tuple."
-  (setq treemacs-doubleclick-actions-config (assq-delete-all state treemacs-doubleclick-actions-config))
+The list of possible states can be found in `treemacs-valid-button-states'.
+ACTION should be one of the `treemacs-visit-node-*' commands."
+  (setf treemacs-doubleclick-actions-config (assq-delete-all state treemacs-doubleclick-actions-config))
   (push (cons state action) treemacs-doubleclick-actions-config))
 
 ;;;###autoload
@@ -136,8 +137,8 @@ ignore any prefix argument."
 
 (defun treemacs--imenu-tag-noselect (file tag-path)
   "Return a list of the source buffer for FILE and the position of the tag from TAG-PATH."
-  (let ((tag (car tag-path))
-        (path (cdr tag-path)))
+  (let ((tag (-last-item tag-path))
+        (path (-butlast tag-path)))
     (condition-case e
         (progn
           (find-file-noselect file)
@@ -145,9 +146,7 @@ ignore any prefix argument."
             (dolist (path-item path)
               (setq index (cdr (assoc path-item index))))
             (-let [(buf . pos) (treemacs--extract-position
-                              (cdr (--first
-                                    (equal (car it) tag)
-                                    index)))]
+                                (cdr (--first (equal (car it) tag) index)))]
               ;; some imenu implementations, like markdown, will only provide
               ;; a raw buffer position (an int) to move to
 	      (list (or buf (get-file-buffer file)) pos))))
@@ -180,7 +179,7 @@ ignore any prefix argument."
            (let (file tag-path)
              (with-current-buffer (marker-buffer btn)
                (setq file (treemacs--nearest-path btn)
-                     tag-path (treemacs--tags-path-of btn)))
+                     tag-path (treemacs-button-get btn :path)))
              (treemacs--imenu-tag-noselect file tag-path)))
           ('call-xref
            (let ((xref (xref-definition
@@ -236,11 +235,17 @@ ignore any prefix argument."
 
                    ["--" #'ignore t]
                    ("Projects"
-                    ;; TODO(2019/01/17): Edit with Org
                     ["Add Project"            treemacs-add-project]
                     ["Add Projectile Project" treemacs-projectile                    :visible (featurep 'treemacs-projectile)]
                     ["Remove Project"         treemacs-remove-project-from-workspace :visible ,(check project)]
                     ["Rename Project"         treemacs-rename-project                :visible ,(check project)])
+                   ("Workspaces"
+                    ["Edit Workspaces"       treemacs-edit-workspaces]
+                    ["Create Workspace"      treemacs-create-workspace]
+                    ["Remove Worspace"       treemacs-remove-workspace]
+                    ["Rename Workspace"      treemacs-rename-workspace]
+                    ["Switch Worspaces"      treemacs-switch-workspace]
+                    ["Set Fallback Worspace" treemacs-set-fallback-workspace])
                    ("Toggles"
                     [,(format "Dotfile Visibility (Currently %s)"
                               (if treemacs-show-hidden-files "Enabled" "Disabled"))
