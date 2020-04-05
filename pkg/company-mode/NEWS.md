@@ -1,5 +1,77 @@
 # History of user-visible changes
 
+## 2020-02-07 (0.9.12)
+
+* Tooltip rendering bugfix.
+* `company-indent-or-complete-common` is better compatible with
+  `indent-for-tab-command`
+  ([comment](https://github.com/company-mode/company-mode/issues/94#issuecomment-571265393)).
+
+## 2020-01-03 (0.9.11)
+
+* New value for option `company-show-numbers` to show numbers on the left.
+* `company-gtags` has some minor fixes.
+* Face definitions have moved to a separate group: `company-faces`.
+* `company-capf`'s `:exit-function` handling has been improved
+  ([#935](https://github.com/company-mode/company-mode/issues/935)).
+* New user option `company-clang-use-compile-flags-txt`
+  ([#933](https://github.com/company-mode/company-mode/issues/933)).
+* Support for completion style specific sorting (Emacs 27 feature).
+* Snippet/template field interaction is inhibited while completion is active
+  (where by default `TAB` calls `company-complete-common`, clashing with snippet
+  map binding `TAB` to "jump to the next field"). Affects both
+  `company-template` and `yasnippet` (requires version 0.14.0).
+
+## 2019-04-15 (0.9.10)
+
+* `company-clang`: better compatibility with Clang 8
+  ([#885](https://github.com/company-mode/company-mode/issues/885)).
+* The change in `company-clang` regarding identity #defines is reverted because
+  it affected other completions as well
+  ([#884](https://github.com/company-mode/company-mode/issues/884)).
+* `company-idle-delay` now accepts a function which generates the idle time or
+  nil indicating no idle completion.
+* Add custom variable `company-show-numbers-function` to make numbers of
+  candidates customizable. 
+* When a symbol is already typed in full, calling `M-x company-complete` will
+  now run its post-completion action (e.g. inserting method parameters
+  template). Calling `M-x company-manual-begin` or invoking a backend command
+  directly will show the popup
+  ([#150](https://github.com/company-mode/company-mode/issues/150),
+  [#476](https://github.com/company-mode/company-mode/issues/476)).
+
+## 2018-12-13 (0.9.9)
+
+* Fix for the changes in the previous release.
+* New hook `company-after-completion-hook`.
+* `company-clang` removes identity preprocessor #defines from completions
+  ([#841](https://github.com/company-mode/company-mode/issues/841)).
+
+## 2018-12-08 (0.9.8)
+
+* CAPF backend fixed to use the right `:exit-function`. It can now safely be a
+  closure with lexical context capturing the buffer state at the moment when the
+  completion table was returned
+  ([#845](https://github.com/company-mode/company-mode/pull/845)).
+
+## 2018-11-06 (0.9.7)
+
+* For more sophisticated highlighting in non-prefix completion, a backend may
+  now respond to a `match` request with a list of regions.  See
+  `company-backends`.
+  ([#798](https://github.com/company-mode/company-mode/issues/798),
+  [#762](https://github.com/company-mode/company-mode/issues/762))
+* The `company-capf` backend will pick up on a `:company-match` metadata element
+  on the capf function (similar to `:company-location` or `:company-doc-buffer`)
+  and use it as a response to aforementioned `match` request.
+* `company-cmake` supports completion inside string interpolations
+  ([#714](https://github.com/company-mode/company-mode/pull/714)).
+* Workaround for the conflict between `inferior-python-mode`'s completion code
+  and `company-sort-by-occurrence`.
+* In Emacs 26 and newer, `company-css` is removed from `company-backends`.
+  `company-capf` is used instead.
+* Same for `company-nxml`.
+
 ## 2018-02-23 (0.9.6)
 
 * Workaround for Emacs' ([bug#23980](https://debbugs.gnu.org/23980)) triggered
@@ -245,7 +317,7 @@
 ## 2013-09-28 (0.6.12)
 
 * Default value of `company-begin-commands` changed to `(self-insert-command)`.
-* Futher improvement in `org-indent-mode` compatibility.
+* Further improvement in `org-indent-mode` compatibility.
 
 ## 2013-08-18 (0.6.11)
 
