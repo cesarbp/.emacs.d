@@ -17,3 +17,4 @@ tramp
 network-security.data
 url/
 .cache/
+.lsp-session*

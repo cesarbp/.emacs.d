@@ -143,3 +143,4 @@
 (define-key rust-mode-map (kbd "C-c C-c") 'rust-run)
 (add-hook 'rust-mode-hook #'lsp)
 (setq lsp-keymap-prefix "s-l")
+(setq lsp-rust-server 'rust-analyzer)
