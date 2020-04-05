@@ -65,10 +65,16 @@
 |`npm install -g vscode-css-languageserver-bin`
 |
 
+|D
+|https://github.com/d-language-server/dls[dls]
+|<<lsp-dls,Built-in>>
+|`dub fetch dls; dub run dls:bootstrap`
+|
+
 |Dart
-|https://github.com/natebosch/dart_language_server[dart_language_server]
+|https://github.com/dart-lang/sdk/tree/master/pkg/analysis_server[dart_analysis_server]
 |<<lsp-dart,Built-in>>
-|`pub global activate dart_language_server`
+|https://github.com/dart-lang/sdk/tree/master/pkg/analysis_server[dart_analysis_server]
 |
 
 |Elixir
@@ -180,6 +186,12 @@
 |https://github.com/fwcd/KotlinLanguageServer[kotlin-language-server]
 |
 
+|Nim
+|https://github.com/PMunch/nimlsp[nimlsp]
+|Built-in
+|`nimble install nimlsp`
+|No
+
 |Ocaml
 |https://github.com/freebroccolo/ocaml-language-server[ocaml-language-server]
 |<<lsp-ocaml,Built-in>>
@@ -187,9 +199,15 @@
 |
 
 |Ocaml
-|https://github.com/ocaml/merlin[merlin]
+|https://github.com/ocaml/ocaml-lsp[ocaml-lsp-server]
 |Built in
-|https://github.com/ocaml/merlin[merlin]
+|https://github.com/ocaml/ocaml-lsp[ocaml-lsp-server]
+|
+
+|Perl
+|https://github.com/richterger/Perl-LanguageServer[perl-LanguageServer]
+|<<lsp-perl,Built-in>>
+|`cpan Perl::LanguageServer`
 |
 
 |PHP(recommended)
@@ -218,8 +236,8 @@
 
 |Python(Microsoft)
 |https://github.com/Microsoft/python-language-server[Microsoft Python Language Server]
-|https://github.com/andrew-christianson/lsp-python-ms/[lsp-python-ms]
-|https://github.com/andrew-christianson/lsp-python-ms/[lsp-python-ms]
+|https://github.com/emacs-lsp/lsp-python-ms[lsp-python-ms]
+|https://github.com/emacs-lsp/lsp-python-ms[lsp-python-ms]
 |Yes
 
 |Ruby
@@ -229,9 +247,9 @@
 |Yes
 
 |Rust
-|https://github.com/rust-lang-nursery/rls[rls]
+|https://github.com/rust-lang/rls[rls]
 |<<lsp-rust,Built-in>>
-|https://github.com/rust-lang-nursery/rls[rls]
+|https://github.com/rust-lang/rls[rls]
 |Yes
 
 |Rust
@@ -264,6 +282,12 @@
 |https://github.com/astoff/digestif[Digestif]
 |
 
+|TeX,LaTeX,etc
+|https://github.com/latex-lsp/texlab[texlab]
+|Built-in
+|cargo install --git https://github.com/latex-lsp/texlab.git
+|
+
 |VHDL
 |http://www.vhdltool.com/[VHDL Tool]
 |<<Built-in,lsp-vhdl>>
@@ -273,7 +297,7 @@
 |Vue
 |https://github.com/vuejs/vetur/tree/master/server[vue-language-server]
 |<<lsp-vetur,Built-in>>
-|`npm install -g vue-language-server`
+|`npm install -g vls`
 |Yes (Firefox/Chrome)
 
 |Vimscript
