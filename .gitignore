@@ -16,3 +16,4 @@ tramp
 .yas-compiled-snippets.el
 network-security.data
 url/
+.cache/
