@@ -1,6 +1,6 @@
 ;;; treemacs.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2019 Alexander Miller
+;; Copyright (C) 2020 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 ;;; Code for dealing with asynchronous processes.
@@ -32,23 +32,20 @@
   (require 'inline)
   (require 'treemacs-macros))
 
-(defvar treemacs--dirs-to-collpase.py
-  (eval-when-compile
-    (if (member "treemacs-dirs-to-collapse.py" (directory-files treemacs-dir))
-        (f-join treemacs-dir "treemacs-dirs-to-collapse.py")
-      (f-join treemacs-dir "src/scripts/treemacs-dirs-to-collapse.py"))))
+(defconst treemacs--dirs-to-collpase.py
+  (if (member "treemacs-dirs-to-collapse.py" (directory-files treemacs-dir))
+      (f-join treemacs-dir "treemacs-dirs-to-collapse.py")
+    (f-join treemacs-dir "src/scripts/treemacs-dirs-to-collapse.py")))
 
-(defvar treemacs--git-status.py
-  (eval-when-compile
-    (if (member "treemacs-git-status.py" (directory-files treemacs-dir))
-        (f-join treemacs-dir "treemacs-git-status.py")
-      (f-join treemacs-dir "src/scripts/treemacs-git-status.py"))))
+(defconst treemacs--git-status.py
+  (if (member "treemacs-git-status.py" (directory-files treemacs-dir))
+      (f-join treemacs-dir "treemacs-git-status.py")
+    (f-join treemacs-dir "src/scripts/treemacs-git-status.py")))
 
-(defvar treemacs--single-file-git-status.py
-  (eval-when-compile
-    (if (member "treemacs-single-file-git-status.py" (directory-files treemacs-dir))
-        (f-join treemacs-dir "treemacs-single-file-git-status.py")
-      (f-join treemacs-dir "src/scripts/treemacs-single-file-git-status.py"))))
+(defconst treemacs--single-file-git-status.py
+  (if (member "treemacs-single-file-git-status.py" (directory-files treemacs-dir))
+      (f-join treemacs-dir "treemacs-single-file-git-status.py")
+    (f-join treemacs-dir "src/scripts/treemacs-single-file-git-status.py")))
 
 (defvar treemacs--git-cache-max-size 60
   "Maximum size for `treemacs--git-cache'.
@@ -128,13 +125,15 @@ Real implementation will be `fset' based on `treemacs-git-mode' value."
     (let* ((file-name-handler-alist nil)
            (git-root (expand-file-name git-root))
            (default-directory path)
-           (open-dirs (-some->>
+           (open-dirs (cons
                        path
-                       (treemacs-find-in-dom)
-                       (treemacs-dom-node->children)
-                       (-map #'treemacs-dom-node->key)
-                       ;; Remove extension nodes
-                       (-filter #'stringp)))
+                       (-some->>
+                        path
+                        (treemacs-find-in-dom)
+                        (treemacs-dom-node->reentry-nodes)
+                        (-map #'treemacs-dom-node->key)
+                        ;; Remove extension nodes
+                        (-filter #'stringp))))
            (command `(,treemacs-python-executable
                       "-O"
                       ,treemacs--git-status.py
@@ -221,6 +220,7 @@ GIT-FUTURE: Pfuture"
                   (setq i (1+ i)))))))))
     git-info-hash))
 
+;; TODO(2019/11/06): re-get git status when btn is flattened
 (defun treemacs--apply-deferred-git-state (parent-btn git-future buffer)
   "Apply the git fontification for direct children of PARENT-BTN.
 GIT-FUTURE is parsed the same way as in `treemacs--create-branch'. Additionally
@@ -248,7 +248,7 @@ BUFFER: Buffer"
              ;; and stop when we've moved on to nodes that are above or belong to the next project
              (while (and (setq btn (next-button btn))
                          (>= (treemacs-button-get btn :depth) depth))
-               (-let [path (treemacs-button-get btn :path)]
+               (-let [path (treemacs-button-get btn :key)]
                  (when (and (= depth (treemacs-button-get btn :depth))
                             (not (treemacs-button-get btn :no-git)))
                    (treemacs-button-put
@@ -260,59 +260,75 @@ BUFFER: Buffer"
 Internally calls `treemacs-do-update-single-file-git-state'.
 
 FILE: Filepath"
-  (with-no-warnings
-    (treemacs-save-position
-     (treemacs-do-update-single-file-git-state file))))
+  (treemacs-save-position
+   (treemacs-do-update-single-file-git-state file)))
 
-(defun treemacs-do-update-single-file-git-state (file)
+(defun treemacs-do-update-single-file-git-state (file &optional exclude-parents override-status)
   "Asynchronously update the given FILE node's git fontification.
 Since an update to a single node can potentially also mean a change to the
 states of all its parents they will likewise be updated by this function. If the
 file's current and new git status are the same this function will do nothing.
 
-FILE: Filepath"
+When OVERRIDE-STATUS is non-nil the FILE's cached git status will not be used.
+
+When EXCLUDE-PARENTS is non-nil only the given FILE only the file node is
+updated. This is only used in case a file-watch update requires the insertion of
+a new file that, due to being recently created, does not have a git status cache
+entry.
+
+FILE: Filepath
+EXCLUDE-PARENTS: Boolean
+OVERRIDE-STATUS: Boolean"
   (let* ((local-buffer (current-buffer))
          (parent (treemacs--parent file))
-         (parent-node (treemacs-find-in-dom parent))
-         ;; include the first parent...
-         (parents (cons (treemacs-dom-node->key parent-node)
-                        ;; ...but exclude the project root
-                        (cdr (-map #'treemacs-dom-node->key
-                                   (treemacs-dom-node->all-parents parent-node)))))
-         (current-state (or (-some-> treemacs--git-cache (ht-get parent) (ht-get file)) "0"))
-         (cmd `(,treemacs-python-executable
-                "-O"
-                ,treemacs--single-file-git-status.py ,file ,current-state ,@parents)))
-    (pfuture-callback cmd
-      :directory parent
-      :name "Treemacs Update Single File Process"
-      :on-success
-      (when (buffer-live-p local-buffer)
-        (with-current-buffer local-buffer
-          (treemacs-with-writable-buffer
-           ;; first the file node with its own default face
-           (-let [output (read (pfuture-callback-output))]
-             (-let [(file . state) (pop output)]
-               (-when-let (pos (treemacs-find-visible-node file))
-                 (-let [face (treemacs--git-status-face state 'treemacs-git-unmodified-face)]
-                   (put-text-property
-                    (treemacs-button-start pos) (treemacs-button-end pos)
-                    'face face))))
-             ;; then the directories
-             (pcase-dolist (`(,file . ,state) output)
-               (-when-let (pos (treemacs-find-visible-node file))
-                 (-let [face (treemacs--git-status-face state 'treemacs-directory-face)]
-                   (put-text-property
-                    (treemacs-button-start pos) (treemacs-button-end pos)
-                    'face face))))))))
-      :on-error
-      (pcase (process-exit-status process)
-        (2 (ignore "No Change, Do Nothing"))
-        (_
-         (-let [err-str (treemacs--remove-trailing-newline (pfuture-output-from-buffer pfuture-buffer))]
-           (treemacs-log "Update of node \"%s\" failed with status \"%s\" and result"
-                         file (treemacs--remove-trailing-newline status))
-           (treemacs-log "\"%s\"" (treemacs--remove-trailing-newline err-str))))))))
+         (parent-node (treemacs-find-in-dom parent)))
+    (when parent-node
+      (let* ((parents (unless (or exclude-parents
+                                  (null (treemacs-dom-node->parent parent-node)))
+                        ;; include the first parent...
+                        (cons (treemacs-dom-node->key parent-node)
+                              ;; ...but exclude the project root
+                              (cdr (-map #'treemacs-dom-node->key
+                                         (treemacs-dom-node->all-parents parent-node))))))
+             (git-cache (ht-get treemacs--git-cache parent))
+             (current-state (if override-status
+                                "OVERRIDE"
+                              (or (-some-> git-cache (ht-get file)) "0")))
+             (cmd `(,treemacs-python-executable
+                    "-O"
+                    ,treemacs--single-file-git-status.py ,file ,current-state ,@parents)))
+        (pfuture-callback cmd
+          :directory parent
+          :name "Treemacs Update Single File Process"
+          :on-success
+          (when (buffer-live-p local-buffer)
+            (with-current-buffer local-buffer
+              (treemacs-with-writable-buffer
+               ;; first the file node with its own default face
+               (-let [output (read (pfuture-callback-output))]
+                 (-let [(file . state) (pop output)]
+                   (when git-cache
+                     (ht-set! git-cache file state))
+                   (-when-let (pos (treemacs-find-visible-node file))
+                     (-let [face (treemacs--git-status-face state 'treemacs-git-unmodified-face)]
+                       (put-text-property
+                        (treemacs-button-start pos) (treemacs-button-end pos)
+                        'face face))))
+                 ;; then the directories
+                 (pcase-dolist (`(,file . ,state) output)
+                   (-when-let (pos (treemacs-find-visible-node file))
+                     (-let [face (treemacs--git-status-face state 'treemacs-directory-face)]
+                       (put-text-property
+                        (treemacs-button-start pos) (treemacs-button-end pos)
+                        'face face))))))))
+          :on-error
+          (pcase (process-exit-status process)
+            (2 (ignore "No Change, Do Nothing"))
+            (_
+             (-let [err-str (treemacs--remove-trailing-newline (pfuture-output-from-buffer pfuture-buffer))]
+               (treemacs-log "Update of node \"%s\" failed with status \"%s\" and result"
+                 file (treemacs--remove-trailing-newline status))
+               (treemacs-log "\"%s\"" (treemacs--remove-trailing-newline err-str))))))))))
 
 (defun treemacs--collapsed-dirs-process (path project)
   "Start a new process to determine dirs to collpase under PATH.
@@ -320,10 +336,16 @@ Only starts the process if PROJECT is locally accessible (i.e. exists, and
 is not remote.)
 Output format is an elisp list of string lists that's read directly.
 Every string list consists of the following elements:
- * The path that is being collapsed
- * The string to be appened to the collapsed path in the treemacs view
- * The single directories being collapsed, to be put under filewatch
-   if `treemacs-filewatch-mode' is on."
+ 1) the extra text that must be appended in the view
+ 2) The original full and uncollapsed path
+ 3) a series of intermediate steps which are the result of appending the
+    collapsed path elements onto the original, ending in
+ 4) the full path to the
+    directory that the collapsing leads to. For Example:
+    (\"/26.0/elpa\"
+     \"/home/a/Documents/git/treemacs/.cask\"
+     \"/home/a/Documents/git/treemacs/.cask/26.0\"
+     \"/home/a/Documents/git/treemacs/.cask/26.0/elpa\")"
   (when (and (> treemacs-collapse-dirs 0)
              treemacs-python-executable
              (treemacs-project->is-local-and-readable? project))
@@ -422,7 +444,7 @@ FUTURE: Pfuture process"
 
 (treemacs-only-during-init
  (let ((has-git    (not (null (executable-find "git"))))
-       (has-python (not (null (executable-find "python3")))))
+       (has-python (not (null treemacs-python-executable))))
    (pcase (cons has-git has-python)
      (`(t . t)
       (treemacs-git-mode 'deferred))

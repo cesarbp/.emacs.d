@@ -1,6 +1,6 @@
 ;;; treemacs-test.el --- Tests for treemacs -*- lexical-binding: t -*-
 
-;; Copyright (C) 2019 Alexander Miller
+;; Copyright (C) 2020 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 
@@ -23,6 +23,8 @@
 (require 'dash)
 (require 'pfuture)
 (require 'treemacs)
+(require 'treemacs-bookmarks)
+(require 'treemacs-core-utils)
 (require 'buttercup)
 
 (defconst treemacs-should-run-file-notify-tests (not (null file-notify--library)))
@@ -104,7 +106,7 @@
 
   (let ((treemacs-ignored-file-predicates (default-value 'treemacs-ignored-file-predicates)))
 
-    (describe "Acceptions"
+    (describe "Accepting"
 
       (it "Accepts dot-file"
         (expect (treemacs--reject-ignored-files "~/A/B/C/.foo.el") :to-be t))
@@ -118,7 +120,7 @@
       (it "Accepts directory"
         (expect (treemacs--reject-ignored-files "~/A/B/C/") :to-be t)))
 
-    (describe "Rejections"
+    (describe "Rejecting"
 
       (it "Fails on nil input"
         (expect (treemacs--reject-ignored-files nil) :to-throw))
@@ -246,8 +248,8 @@
   (it "Returns empty string when input is many periods"
     (expect (treemacs--file-extension ".......") :to-equal ""))
 
-  (it "Returns the filename of an absolute path without extension"
-    (expect (treemacs--file-extension "/A/B/C/D/foo") :to-equal "foo"))
+  (it "Returns input for an absolute path without extension"
+    (expect (treemacs--file-extension "/A/B/C/D/foo") :to-equal "/A/B/C/D/foo"))
 
   (it "Returns the filename of a filename without extension"
     (expect (treemacs--file-extension "foo") :to-equal "foo"))
@@ -281,49 +283,53 @@
             :to-equal
             (treemacs--partition-imenu-index '(("A" ("a1" "a2")) ("B" ("b1" "b2")) ("x" "y" "z")) "Functions"))))
 
-(describe "treemacs--maybe-filter-dotfiles"
+(describe "treemacs--should-reenter?"
 
-  (it "Does nothing when dotfiles are shown"
-    (let ((treemacs-show-hidden-files t)
-          (input '("/home/.A" "/home/B/C" "/home/.A/B" "/home/.A/.B/.C")))
-      (expect (treemacs--with-project (make-treemacs-project :path "/home" :path-status 'local-readable)
-                (treemacs--maybe-filter-dotfiles input))
-              :to-equal input)))
+  (describe "Accepting"
 
-  (it "Fails on nil input"
-    (let ((treemacs-show-hidden-files nil))
-      (expect (treemacs--with-project (make-treemacs-project :path "/home" :path-status 'local-readable)
-                (treemacs--maybe-filter-dotfiles nil))
-              :to-throw)))
+    (it "Accepts nil"
+      (expect (treemacs--should-reenter? nil)
+              :to-be t))
 
-  (it "Filters single dotfile"
-    (let ((treemacs-show-hidden-files nil)
-          (input '("/home/A/B/C/D/.d")))
-      (expect (treemacs--with-project (make-treemacs-project :path "/home" :path-status 'local-readable)
-                (treemacs--maybe-filter-dotfiles input))
-              :to-be nil)))
+    (it "Accepts custom nodes"
+      (expect (treemacs--should-reenter? '(:custom A B))
+              :to-be t))
 
-  (it "Filters dotfile based on part"
-    (let ((treemacs-show-hidden-files nil)
-          (input '("/home/A/B/C/.D/d")))
-      (expect (treemacs--with-project (make-treemacs-project :path "/home" :path-status 'local-readable)
-                (treemacs--maybe-filter-dotfiles input))
-              :to-be nil)))
+    (it "Accepts non-string/cons paths"
+      (expect (treemacs--should-reenter? 'X)
+              :to-be t))
 
-  (it "Does not filter dotfile above root"
-    (let ((treemacs-show-hidden-files nil)
-          (input '("/home/.A/B/C/d")))
-      (expect (treemacs--with-project (make-treemacs-project :path "/home/.A/B" :path-status 'local-readable)
-                (make-treemacs-workspace :projects (list ))
-                (treemacs--maybe-filter-dotfiles input))
-              :to-equal input)))
+    (it "Accepts non-dotfiles"
+      (-let [treemacs-show-hidden-files nil]
+        (expect (treemacs--should-reenter? "/foo/bar")
+                :to-be t)))
 
-  (it "Filters long input"
-    (let ((treemacs-show-hidden-files nil)
-          (input '("/home/.A/B/C/d" "/home/.A/B/.C/D/E" "/home/.A/B/C/.d" "/home/.A/B/C/D/E")))
-      (expect (treemacs--with-project (make-treemacs-project :path "/home/.A/B" :path-status 'local-readable)
-                (treemacs--maybe-filter-dotfiles input))
-              :to-equal '("/home/.A/B/C/d" "/home/.A/B/C/D/E")))))
+    (it "Accepts extensions under non-dotfiles"
+      (-let [treemacs-show-hidden-files nil]
+        (expect (treemacs--should-reenter? '("/foo/bar" A B))
+                :to-be t)))
+
+    (it "Accepts dotfiles when they are shown"
+      (-let [treemacs-show-hidden-files t]
+        (expect (treemacs--should-reenter? "/foo/.bar")
+                :to-be t)))
+
+    (it "Accepts extensions under dotfiles when they are shown"
+      (-let [treemacs-show-hidden-files t]
+        (expect (treemacs--should-reenter? '("/foo/.bar" A B))
+                :to-be t))))
+
+  (describe "Rejecting"
+
+    (it "Rejects dotfiles when they are hidden"
+      (-let [treemacs-show-hidden-files nil]
+        (expect (treemacs--should-reenter? "/foo/.bar")
+                :to-be nil)))
+
+    (it "Rejects extensions under dotfiles when they are hidden"
+      (-let [treemacs-show-hidden-files nil]
+        (expect (treemacs--should-reenter? '("/foo/.bar" A B))
+                :to-be nil)))))
 
 (describe "treemacs--parent"
 
@@ -390,13 +396,13 @@
   (it "Does nothing when the dom is empty"
     (with-temp-buffer
       (-let [treemacs-dom (ht)]
-        (treemacs--on-rename "OLD" "NEW")
+        (treemacs--on-rename "OLD" "NEW" nil)
         (expect (ht-empty? treemacs-dom) :to-be t))))
 
   (it "Does nothing when the old key is not in the dom"
     (with-temp-buffer
       (-let [treemacs-dom (ht ("A" (make-treemacs-dom-node :key "A")))]
-        (treemacs--on-rename "OLD" "NEW")
+        (treemacs--on-rename "OLD" "NEW" nil)
         (expect (ht-size treemacs-dom) :to-equal 1)
         (expect (ht-get treemacs-dom "A") :to-be-truthy))))
 
@@ -407,9 +413,9 @@
              (node1 (make-treemacs-dom-node :key "/A/OLD"))
              (node2 (make-treemacs-dom-node :key "/A/OLD/X"))
              (node3 (make-treemacs-dom-node :key "/A/OLD/X/Y"))
-             (node4 (make-treemacs-dom-node :key (list "Classes" "/A/OLD/X/Y")))
-             (node5 (make-treemacs-dom-node :key (list "Class Foo" "/A/OLD/X/Y" "Classes")))
-             (node6 (make-treemacs-dom-node :key (list "void bar()" "/A/OLD/X/Y" "Classes" "Class Foo")))
+             (node4 (make-treemacs-dom-node :key (list "/A/OLD/X/Y" "Classes")))
+             (node5 (make-treemacs-dom-node :key (list "/A/OLD/X/Y" "Classes" "Class Foo")))
+             (node6 (make-treemacs-dom-node :key (list "/A/OLD/X/Y" "Classes" "Class Foo" "void bar()")))
              (nodex (make-treemacs-dom-node :key "/A/B"))
              (nodey (make-treemacs-dom-node :key "/A/B/C")))
         (setf (treemacs-dom-node->parent nodex) root
@@ -436,24 +442,60 @@
                   ((treemacs-dom-node->key node4) node4)
                   ((treemacs-dom-node->key node5) node5)
                   ((treemacs-dom-node->key node6) node6)))
-        (treemacs--on-rename "/A/OLD" "/A/NEW")
-        (dolist (key '("/A/OLD" "/A/OLD/X" "/A/OLD/X/Y" ("Classes" "/A/OLD/X/Y")
-                       ("Class Foo" "/A/OLD/X/Y" "Classes") ("void bar()" "/A/OLD/X/Y" "Classes" "Class Foo")))
+        (treemacs--on-rename "/A/OLD" "/A/NEW" nil)
+        (dolist (key '("/A/OLD"
+                       "/A/OLD/X"
+                       "/A/OLD/X/Y"
+                       ("/A/OLD/X/Y" "Classes")
+                       ("/A/OLD/X/Y" "Classes" "Class Foo")
+                       ("/A/OLD/X/Y" "Classes" "Class Foo" "void bar()")))
           (expect (ht-get treemacs-dom key) :to-be nil))
-        (dolist (key '("/A/NEW" "/A/NEW/X" "/A/NEW/X/Y" ("Classes" "/A/NEW/X/Y")
-                       ("Class Foo" "/A/NEW/X/Y" "Classes") ("void bar()" "/A/NEW/X/Y" "Classes" "Class Foo")))
+        (dolist (key '("/A/NEW" "/A/NEW/X" "/A/NEW/X/Y"
+                       ("/A/NEW/X/Y" "Classes")
+                       ("/A/NEW/X/Y" "Classes" "Class Foo")
+                       ("/A/NEW/X/Y" "Classes" "Class Foo" "void bar()")))
           (expect (ht-get treemacs-dom key) :to-be-truthy))
-        (expect (ht-size treemacs-dom) :to-equal 9)))))
+        (expect (ht-size treemacs-dom) :to-equal 9))))
+
+ (it "Won't rename initial node when filewatch is enabled"
+    (with-temp-buffer
+      (let* ((default-directory "/A")
+             (root (make-treemacs-dom-node :key "/A"))
+             (node1 (make-treemacs-dom-node :key "/A/OLD"))
+             (node2 (make-treemacs-dom-node :key "/A/OLD/X"))
+             (node3 (make-treemacs-dom-node :key "/A/OLD/X/Y"))
+             (nodex (make-treemacs-dom-node :key "/A/B"))
+             (nodey (make-treemacs-dom-node :key "/A/B/C")))
+        (setf (treemacs-dom-node->parent nodex) root
+              (treemacs-dom-node->parent nodey) root
+              (treemacs-dom-node->parent node1) root
+              (treemacs-dom-node->parent node2) node1
+              (treemacs-dom-node->parent node3) node2
+              (treemacs-dom-node->children root) (list node1 nodex nodey)
+              (treemacs-dom-node->children node1) (list node2)
+              (treemacs-dom-node->children node2) (list node3))
+        (setf treemacs-dom
+              (ht ((treemacs-dom-node->key root) root)
+                  ((treemacs-dom-node->key nodex) nodex)
+                  ((treemacs-dom-node->key nodey) nodey)
+                  ((treemacs-dom-node->key node1) node1)
+                  ((treemacs-dom-node->key node2) node2)
+                  ((treemacs-dom-node->key node3) node3)))
+        (treemacs--on-rename "/A/OLD" "/A/NEW" t)
+        (dolist (key '("/A/OLD/X" "/A/OLD/X/Y"))
+          (expect (ht-get treemacs-dom key) :to-be nil))
+        (dolist (key '("/A/OLD" "/A/NEW/X" "/A/NEW/X/Y"))
+          (expect (ht-get treemacs-dom key) :to-be-truthy))
+        (expect (ht-size treemacs-dom) :to-equal 6)))))
 
 (describe "treemacs-on-collapse"
 
-  (it "Does nothing when key is nil"
+  (it "Fails when key is nil"
     (with-temp-buffer
-      (setq treemacs-dom (ht))
-      (expect (treemacs-on-collapse nil) :to-be nil)
-      (expect (ht-empty? treemacs-dom) :to-be t)))
+      (-let [treemacs-dom (ht)]
+        (expect (treemacs-on-collapse nil) :to-throw))))
 
-  (it "Completely removes node without children"
+  (it "Removes empty nodes from reentry"
     (with-temp-buffer
       (let* ((default-directory "/A")
              (treemacs-dom (ht))
@@ -465,14 +507,13 @@
                      (ht-set! treemacs-dom "/A/B"
                               (make-treemacs-dom-node :key "/A/B"))
                      (treemacs-find-in-dom "/A/B"))))
-        (setf (treemacs-dom-node->parent node) root)
-        (setf (treemacs-dom-node->children root) (list node))
+        (setf (treemacs-dom-node->parent node) root
+              (treemacs-dom-node->children root) (list node)
+              (treemacs-dom-node->reentry-nodes root) (list node))
         (treemacs-on-collapse "/A/B")
-        (expect (ht-size treemacs-dom) :to-equal 1)
-        (expect (ht-get treemacs-dom "/A/B") :to-be nil)
-        (expect (treemacs-dom-node->children root) :to-be nil))))
+        (expect (treemacs-dom-node->reentry-nodes root) :to-be nil))))
 
-  (it "Marks node with children as closed"
+  (it "Keeps node with children in reentry"
     (with-temp-buffer
       (let* ((default-directory "/A")
              (treemacs-dom (ht))
@@ -491,62 +532,22 @@
         (setf (treemacs-dom-node->parent node1) root
               (treemacs-dom-node->parent node2) node1
               (treemacs-dom-node->children root) (list node1)
-              (treemacs-dom-node->children node1) (list node2))
+              (treemacs-dom-node->children node1) (list node2)
+              (treemacs-dom-node->reentry-nodes root) (list node1)
+              (treemacs-dom-node->reentry-nodes node1) (list node2))
         (treemacs-on-collapse "/A/B")
         (expect (ht-size treemacs-dom)
-                :to-equal 3)
-        (expect (ht-get treemacs-dom "/A/B")
-                :to-be-truthy)
-        (expect (ht-get treemacs-dom "/A/B/C")
-                :to-be-truthy)
-        (expect (treemacs-dom-node->closed node1)
-                :to-be-truthy)
-        (expect (treemacs-dom-node->closed node2)
-                :to-be nil)
+                :to-equal 2)
         (expect (treemacs-dom-node->children root)
                 :to-equal (list node1))
         (expect (treemacs-dom-node->children node1)
-                :to-equal (list node2))
-        (expect (treemacs-dom-node->parent node1)
-                :to-equal root)
-        (expect (treemacs-dom-node->parent node2)
-                :to-equal node1))))
-
-  (it "Resets subtree's refresh and position slots"
-    (with-temp-buffer
-      (let* ((default-directory "/A")
-             (treemacs-dom (ht))
-             (root (progn
-                     (ht-set! treemacs-dom default-directory
-                              (make-treemacs-dom-node :key default-directory))
-                     (treemacs-find-in-dom default-directory)))
-             (node1 (progn
-                      (ht-set! treemacs-dom "/A/B"
-                               (make-treemacs-dom-node :key "/A/B" :position 11 :refresh-flag t))
-                      (treemacs-find-in-dom "/A/B")))
-             (node2 (progn
-                      (ht-set! treemacs-dom "/A/B/C"
-                               (make-treemacs-dom-node :key "/A/B/C" :position 12 :refresh-flag t))
-                      (treemacs-find-in-dom "/A/B/C"))))
-        (setf (treemacs-dom-node->parent node1) root
-              (treemacs-dom-node->parent node2) node1
-              (treemacs-dom-node->children root) (list node1)
-              (treemacs-dom-node->children node1) (list node2))
-        (treemacs-on-collapse "/A/B")
-        (expect (ht-size treemacs-dom)
-                :to-equal 3)
-        (expect (ht-get treemacs-dom "/A/B")
-                :to-be-truthy)
-        (expect (ht-get treemacs-dom "/A/B/C")
-                :to-be-truthy)
-        (expect (treemacs-dom-node->refresh-flag node1)
                 :to-be nil)
-        (expect (treemacs-dom-node->refresh-flag node2)
+        (expect (treemacs-find-in-dom "/A/B/C")
                 :to-be nil)
-        (expect (treemacs-dom-node->position node1)
+        (expect (treemacs-dom-node->reentry-nodes root)
                 :to-be nil)
-        (expect (treemacs-dom-node->position node2)
-                :to-be nil ))))
+        (expect (treemacs-dom-node->reentry-nodes node1)
+                :to-equal (list node2)))))
 
   (it "Removes a subtree when purging"
     (with-temp-buffer
@@ -558,51 +559,45 @@
                      (treemacs-find-in-dom default-directory)))
              (node1 (progn
                       (ht-set! treemacs-dom "/A/B"
-                               (make-treemacs-dom-node :key "/A/B" :position 11))
+                               (make-treemacs-dom-node :key "/A/B"))
                       (treemacs-find-in-dom "/A/B")))
              (node2 (progn
-                      (ht-set! treemacs-dom "/A/B/C"
-                               (make-treemacs-dom-node :key "/A/B/C" :position 12))
+                      (ht-set! treemacs-dom "/A/B/C" (make-treemacs-dom-node :key "/A/B/C"))
                       (treemacs-find-in-dom "/A/B/C"))))
         (setf (treemacs-dom-node->parent node1) root
               (treemacs-dom-node->parent node2) node1
               (treemacs-dom-node->children root) (list node1)
-              (treemacs-dom-node->children node1) (list node2))
-        (treemacs-on-collapse "/A/B" t)
+              (treemacs-dom-node->children node1) (list node2)
+              (treemacs-dom-node->reentry-nodes root) (list node1)
+              (treemacs-dom-node->reentry-nodes node1) (list node2))
+        (treemacs-on-collapse "/A/B" :purge)
         (expect (ht-size treemacs-dom)
-                :to-equal 1)
-        (expect (ht-get treemacs-dom "/A/B")
-                :to-be nil)
+                :to-equal 2)
         (expect (ht-get treemacs-dom "/A/B/C")
                 :to-be nil)
-        (expect (treemacs-dom-node->children root)
+        (expect (treemacs-dom-node->children node1)
+                :to-be nil)
+        (expect (treemacs-dom-node->reentry-nodes node1)
                 :to-be nil)))))
 
 (describe "treemacs-on-expand"
 
-  (it "Does nothing when input is nil"
+  (it "Fails when key is nil"
     (with-temp-buffer
-      (setq treemacs-dom (ht))
-      (expect (treemacs-on-expand "A" 1 nil) :to-be nil)
-      (expect (treemacs-on-expand "A" nil "B") :to-be nil)
-      (expect (treemacs-on-expand nil 1 "B") :to-be nil)))
+      (-let [treemacs-dom (ht)]
+        (expect (treemacs-on-expand nil 1) :to-be nil))))
 
-  (it "Correctly expands new node"
+  (it "Correctly expands root node"
     (with-temp-buffer
       (let* ((default-directory "/A")
-             (treemacs-dom (ht))
-             (root (progn
-                     (ht-set! treemacs-dom default-directory
-                              (make-treemacs-dom-node :key default-directory))
-                     (treemacs-find-in-dom default-directory))))
-        (treemacs-on-expand "/A/B" 22 "/A")
-        (-let [node (treemacs-find-in-dom "/A/B")]
-          (expect (ht-size treemacs-dom) :to-equal 2)
-          (expect (treemacs-dom-node->children root) :to-equal (list node))
-          (expect (treemacs-dom-node->position node) :to-equal 22)
-          (expect (treemacs-dom-node->parent node) :to-equal root)))))
+             (treemacs-dom (ht)))
+        (treemacs-on-expand "/A" 1)
+        (-let [root (treemacs-find-in-dom default-directory)]
+          (expect (ht-size treemacs-dom) :to-equal 1)
+          (expect (treemacs-dom-node->position root) :to-equal 1)
+          (expect (treemacs-dom-node->parent root) :to-be nil)))))
 
-  (it "Correctly expands previously open node"
+  (it "Correctly expands child node"
     (with-temp-buffer
       (let* ((default-directory "/A")
              (treemacs-dom (ht))
@@ -612,17 +607,13 @@
                      (treemacs-find-in-dom default-directory)))
              (node (progn
                      (ht-set! treemacs-dom "/A/B"
-                              (make-treemacs-dom-node :key "/A/B" :closed t))
+                              (make-treemacs-dom-node :key "/A/B"))
                      (treemacs-find-in-dom "/A/B"))))
-        (setf (treemacs-dom-node->parent node) root)
-        (setf (treemacs-dom-node->children root) (list node))
-        (treemacs-on-expand "/A/B" 22 "/A")
-        (-let [node (treemacs-find-in-dom "/A/B")]
-          (expect (ht-size treemacs-dom) :to-equal 2)
-          (expect (treemacs-dom-node->children root) :to-equal (list node))
-          (expect (treemacs-dom-node->position node) :to-equal 22)
-          (expect (treemacs-dom-node->parent node) :to-equal root)
-          (expect (treemacs-dom-node->closed node) :to-be nil))))))
+        (setf (treemacs-dom-node->parent node) root
+              (treemacs-dom-node->children root) (list node))
+        (treemacs-on-expand "/A/B" 2)
+        (expect (treemacs-dom-node->position node) :to-equal 2)
+        (expect (treemacs-dom-node->reentry-nodes root) :to-equal (list node))))))
 
 (when treemacs-should-run-file-notify-tests
 
@@ -919,49 +910,16 @@
         (button-put b6 :depth 6)
         (expect (treemacs--next-non-child-button b1) :to-be nil)))))
 
-(describe "treemacs--tags-path-of"
-
-  (it "Fails on nil input"
-    (expect (treemacs--tags-path-of nil) :to-throw))
-
-  (it "Returns an absolute path for non-tag buttons"
-    (with-temp-buffer
-      (let ((b (insert-text-button "b")))
-        (treemacs-button-put b :path "/A/B/C")
-        (expect  (treemacs--tags-path-of b) :to-equal "/A/B/C"))))
-
-
-  (it "Returns path and label for button at depth 1"
-    (with-temp-buffer
-      (let ((p (insert-text-button "p"))
-            (b (insert-text-button "label")))
-        (button-put p :path "/A/B/C")
-        (button-put b :parent p)
-        (expect (treemacs--tags-path-of b)
-                :to-equal '("label" "/A/B/C") ))))
-
-  (it "Returns full path for deeply nested buttons"
-    (with-temp-buffer
-      (let ((b1 (insert-text-button "b1"))
-            (b2 (insert-text-button "b2"))
-            (b3 (insert-text-button "b3"))
-            (b4 (insert-text-button "b4"))
-            (b5 (insert-text-button "b5")))
-        (button-put b5 :parent b4)
-        (button-put b4 :parent b3)
-        (button-put b3 :parent b2)
-        (button-put b2 :parent b1)
-        (button-put b2 :parent b1)
-        (button-put b1 :path "/A/B/C")
-        (expect (treemacs--tags-path-of b5)
-                :to-equal '("b5" "/A/B/C" "b2" "b3" "b4"))))))
-
 (describe "treemacs--validate-persist-lines"
 
   (describe "Successes"
 
     (it "Succeeds on correctly formed input"
       (-let [lines '("* W1" "** P1" " - path :: a" "** P2" "- path :: b" "* W2" "** P3" " - path :: c")]
+        (expect (treemacs--validate-persist-lines lines) :to-be 'success)))
+
+    (it "Succeeds with the same path in multiple workspaces"
+      (-let [lines '("* W1" "** P1" " - path :: /A/B" "* W2" "** P2" " - path :: /A/B")]
         (expect (treemacs--validate-persist-lines lines) :to-be 'success)))
 
     (it "Succeeds with non-connectable remotes"
@@ -1003,7 +961,17 @@
 
     (it "Fails when input is empty"
       (expect (treemacs--validate-persist-lines nil)
-              :to-equal '(error :start "Input is empty")))))
+              :to-equal '(error :start "Input is empty")))
+
+    (it "Fails when path appears more than once"
+      (-let [lines '("* W1"
+                     "** P1"
+                     " - path :: /A/B/C"
+                     "** P2"
+                     "- path :: /A/B/C/D")]
+        (expect (treemacs--validate-persist-lines lines)
+                :to-equal
+                '(error "- path :: /A/B/C/D" "Path '/A/B/C/D' appears in the workspace more than once."))))))
 
 (describe "treemacs--read-persist-lines"
 
@@ -1054,11 +1022,15 @@
     (-let [treemacs-collapse-dirs 3]
       (expect (-> treemacs-dir
                   (f-join "test")
-                  (treemacs--collapsed-dirs-process (make-treemacs-project :name "P" :path treemacs-dir :path-status 'local-readable))
+                  (treemacs--collapsed-dirs-process
+                   (make-treemacs-project
+                    :name "P"
+                    :path treemacs-dir
+                    :path-status 'local-readable))
                   (treemacs--parse-collapsed-dirs))
               :to-equal
-              `((,(f-join treemacs-dir "test/testdir1")
-                 "/testdir2/testdir3"
+              `(("/testdir2/testdir3"
+                 ,(f-join treemacs-dir "test/testdir1")
                  ,(f-join treemacs-dir "test/testdir1/testdir2")
                  ,(f-join treemacs-dir "test/testdir1/testdir2/testdir3"))))))
 
@@ -1090,65 +1062,6 @@
   (it "Removes only the last newline"
     (expect (treemacs--remove-trailing-newline "abc\n\n\n") :to-equal "abc\n\n")))
 
-(describe "treemacs-is-path-visible?"
-
-  (describe "Successes"
-
-    (it "Finds node in the dom"
-      (let* ((pos (point-marker))
-             (root-node (make-treemacs-dom-node :closed nil :parent nil))
-             (node (make-treemacs-dom-node :position pos :closed nil :parent root-node))
-             (path "/path")
-             (treemacs-dom (ht (path node) ("/" root-node))))
-        (expect (treemacs-is-path-visible? path) :to-be t)))
-
-    (it "Finds project root"
-      (let ((treemacs-dom (ht)))
-        (treemacs--with-project (make-treemacs-project :path "/test-project")
-          (expect (treemacs-is-path-visible? "/test-project") :to-be t))))
-
-    (it "Finds top-level custom root node"
-      (let ((treemacs-dom (ht))
-            (treemacs--project-positions (ht ('Some-Extension (point-marker)))))
-        (expect (treemacs-is-path-visible? '(:custom Some-Extension)) :to-be t)))
-
-    (it "Finds node in parent's children"
-      (with-temp-buffer
-        (let* ((parent-pos (point-marker))
-               (root (make-treemacs-dom-node :parent nil))
-               (parent (make-treemacs-dom-node :position parent-pos :parent root))
-               (path "/A/B")
-               (parent-path (treemacs--parent path))
-               (treemacs-dom (ht ("/" root) (parent-path parent))))
-          (insert-text-button "B1" :path parent-path :depth 1)
-          (insert "\n")
-          (insert-text-button "B2" :path "/other/path/1" :depth 2 :parent parent-pos)
-          (insert "\n")
-          (insert-text-button "B3" :path path :depth 2 :parent parent-pos)
-          (insert "\n")
-          (insert-text-button "B4" :path "/other/path/2" :depth 2 :parent parent-pos)
-          (expect (treemacs-is-path-visible? path) :to-be t)))))
-
-  (describe "Failures"
-
-    (it "Fails on nil input"
-      (expect (treemacs-is-path-visible? nil)
-              :to-throw))
-
-    (it "Won't find a child of a closed node"
-      (let* ((node (make-treemacs-dom-node :position (point-marker) :closed t))
-             (path "/path")
-             (treemacs-dom (ht (path node))))
-        (expect (treemacs-is-path-visible? "/path/child")
-                :to-be nil)))
-
-    (it "Won't find a grandchild of a closed node"
-      (let* ((parent-node (make-treemacs-dom-node :position (point-marker) :closed t))
-             (node (make-treemacs-dom-node :position (point-marker) :closed nil :parent parent-node))
-             (treemacs-dom (ht ("/root" parent-node) ("/root/child" node))))
-        (expect (treemacs-is-path-visible? "/root/child/grandchild")
-                :to-be nil)))))
-
 (describe "treemacs--add-trailing-slash"
 
   (it "Fails on nil input"
@@ -1162,6 +1075,19 @@
 
   (it "Adds a slash when there isn't one"
     (expect (treemacs--add-trailing-slash "/ABC") :to-equal "/ABC/")))
+
+(describe "treemacs--is-name-invalid?"
+  (it "detects nil"
+    (expect (treemacs--is-name-invalid? nil) :to-be t))
+
+  (it "detects an empty string"
+    (expect (treemacs--is-name-invalid? "") :to-be t))
+
+  (it "detects a blank string"
+    (expect (treemacs--is-name-invalid? "      ") :to-be t))
+
+  (it "detects a string with newlines"
+    (expect (treemacs--is-name-invalid? "a\nb") :to-be t)))
 
 (describe "treemacs--find-workspace"
 
@@ -1203,6 +1129,165 @@
             (treemacs--workspaces (list ws1 ws2)))
        (treemacs--find-workspace "/A/B/C")
        (expect (treemacs-current-workspace) :to-be ws2)))))
+
+(defmacro test-treemacs--with-sample-buffer (&rest body)
+  "Evaluate BODY with some buttons defined.
+
+In BODY, variable PROJECT is defined."
+  (declare (indent 0))
+  (let ((parent-marker (make-symbol "parent-marker")))
+    `(with-temp-buffer
+       (let ((project (make-treemacs-project :name "Project" :path "/project"))
+             (,parent-marker nil))
+         (insert-text-button "Project"
+                             :path "/project"
+                             :state 'root-node-open
+                             :depth 0
+                             :project project)
+         (setq ,parent-marker (copy-marker (line-beginning-position)))
+         (insert "\n")
+         (insert-text-button "directory"
+                             :path "/project/directory"
+                             :key "/project/directory"
+                             :state 'dir-node-open
+                             :parent ,parent-marker
+                             :depth 1)
+         (setq ,parent-marker (copy-marker (line-beginning-position)))
+         (insert "\n")
+         (insert-text-button "file.txt"
+                             :path "/project/directory/file.txt"
+                             :key "/project/directory/file.txt"
+                             :state 'file-node-closed
+                             :parent ,parent-marker
+                             :depth 2)
+         (setq ,parent-marker (copy-marker (line-beginning-position)))
+         (insert "\n")
+         (goto-char 0)
+         ,@body))))
+
+(defun test-treemacs--format-pattern (template expected-1 expected-2 expected-3)
+  "Test that `treemacs--format-bookmark-title' expands TEMPLATE correctly.
+
+EXPECTED-1 is the expected expansion of the \"Project\" button.
+EXPECTED-2 is the expected expansion of the \"directory\" button.
+EXPECTED-3 is the expected expansion of the \"file.txt\" button."
+  (test-treemacs--with-sample-buffer
+   (let ((treemacs-bookmark-title-template template))
+     (expect (treemacs--format-bookmark-title (treemacs-current-button)) :to-equal expected-1)
+     (forward-line 1)
+     (expect (treemacs--format-bookmark-title (treemacs-current-button)) :to-equal expected-2)
+     (forward-line 1)
+     (expect (treemacs--format-bookmark-title (treemacs-current-button)) :to-equal expected-3))))
+
+(describe "treemacs-collect-child-nodes"
+
+  (it "Finds nothing for last node"
+    (with-temp-buffer
+      (insert (propertize "Root" 'button t :depth 1))
+      (insert "\n")
+      (goto-char 0)
+      (let* ((parent-btn (point-marker))
+             (result (treemacs-collect-child-nodes parent-btn)))
+        (expect result :to-be nil))))
+
+  (it "Finds nothing for node without direct children"
+    (with-temp-buffer
+      (let* ((root1 (progn
+                      (insert (propertize "Root1" 'button t :depth 1))
+                      (beginning-of-line)
+                      (point-marker)))
+             (input (progn
+                      (end-of-line)
+                      (insert "\n" (propertize " Input" 'button t :depth 2 :parent root1))
+                      (beginning-of-line)
+                      (point-marker)))
+             (_root2 (progn
+                       (end-of-line)
+                       (insert "\n" (propertize "Root2" 'button t :depth 1))
+                       (beginning-of-line)
+                       (point-marker))) )
+        (-let [result (treemacs-collect-child-nodes input)]
+          (expect result :to-be nil)))))
+
+  (it "Finds only direct childre"
+    (with-temp-buffer
+      (let* ((root1 (progn
+                      (insert (propertize "Root1" 'button t :depth 1))
+                      (beginning-of-line)
+                      (point-marker)))
+             (input (progn
+                      (end-of-line)
+                      (insert "\n" (propertize " Input" 'button t :depth 2 :parent root1))
+                      (beginning-of-line)
+                      (point-marker)))
+             (child1 (progn
+                       (end-of-line)
+                       (insert "\n" (propertize "  Child1" 'button t :depth 3 :parent input))
+                       (beginning-of-line)
+                       (point-marker)))
+             (_grand-child (progn
+                            (end-of-line)
+                            (insert "\n" (propertize "   Grand Child" 'button t :depth 4 :parent child1))
+                            (beginning-of-line)
+                            (point-marker)))
+             (_child2 (progn
+                       (end-of-line)
+                       (insert "\n" (propertize "  Child2" 'button t :depth 3 :parent input))
+                       (beginning-of-line)
+                       (point-marker))) )
+        (-let [result (-map #'treemacs--get-label-of (treemacs-collect-child-nodes input))]
+          (expect result :to-have-same-items-as '("  Child1" "  Child2")))))))
+
+(describe "treemacs--format-bookmark-title"
+  (it "Uses the configured pattern"
+    (test-treemacs--format-pattern "No replacements" "No replacements" "No replacements" "No replacements"))
+
+  (it "Formats the project name"
+    (test-treemacs--format-pattern "${project}" "Project" "Project" "Project"))
+
+  (it "Formats the label"
+    (test-treemacs--format-pattern "${label}" "Project" "directory" "file.txt"))
+
+  (it "Formats the parent label"
+    (test-treemacs--format-pattern "${label:1}" "" "Project" "directory"))
+
+  (it "Formats the grandparent label"
+    (test-treemacs--format-pattern "${label:2}" "" "" "Project"))
+
+  (it "Formats the label path"
+    (test-treemacs--format-pattern "${label-path}" "Project" "Project/directory" "Project/directory/file.txt"))
+
+  (it "Formats the limited label path"
+    (test-treemacs--format-pattern "${label-path:2}" "Project" "Project/directory" "directory/file.txt"))
+
+  (it "Does not hang with negatie label path limit"
+    (test-treemacs--format-pattern "${label-path:-2}" "Project" "Project/directory" "Project/directory/file.txt"))
+
+  (it "Formats the file path"
+    (test-treemacs--format-pattern "${file-path}" "/project" "/project/directory" "/project/directory/file.txt"))
+
+  (it "Formats the limited file path"
+    (test-treemacs--format-pattern "${file-path:2}" "/project" "/project/directory" "directory/file.txt"))
+
+  (it "Does not hang with negative file path"
+    (test-treemacs--format-pattern "${file-path:-1}" "" "" "")))
+
+(describe "treemacs-dom-node->remove-collapse-keys!"
+  (it "Removes and deletes all collapse entries"
+    (with-temp-buffer
+      (let* ((dom-node (make-treemacs-dom-node
+                        :key "Main Key"
+                        :collapse-keys '("Key 1" "Key 2" "Key 3")))
+             (treemacs-dom (ht ("Main Key" dom-node)
+                               ("Key 1" dom-node)
+                               ("Key 2" dom-node)
+                               ("Key 3" dom-node))))
+        (treemacs-dom-node->remove-collapse-keys! dom-node '("Key 1" "Key 3"))
+        (expect (treemacs-find-in-dom "Main Key") :to-be dom-node)
+        (expect (treemacs-find-in-dom "Key 2") :to-be dom-node)
+        (expect (treemacs-find-in-dom "Key 1") :to-be nil)
+        (expect (treemacs-find-in-dom "Key 3") :to-be nil)
+        (expect (treemacs-dom-node->collapse-keys dom-node) :to-equal '("Key 2"))))))
 
 (provide 'test-treemacs)
 

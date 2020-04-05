@@ -1,6 +1,6 @@
 ;;; treemacs.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2019 Alexander Miller
+;; Copyright (C) 2020 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 ;;; Major mode definition.
@@ -29,17 +29,26 @@
 (require 'treemacs-faces)
 (require 'treemacs-core-utils)
 (require 'treemacs-icons)
+(require 'treemacs-scope)
 (require 'treemacs-persistence)
 (require 'treemacs-dom)
 (require 'treemacs-workspaces)
 (require 'treemacs-visuals)
 (eval-and-compile (require 'treemacs-macros))
+(with-eval-after-load 'bookmark
+  (require 'treemacs-bookmarks))
 
 (treemacs-import-functions-from  "treemacs"
   treemacs-refresh
-  treemacs-version)
+  treemacs-version
+  treemacs-edit-workspaces)
+(treemacs-import-functions-from "treemacs-bookmarks"
+  treemacs-add-bookmark
+  treemacs--make-bookmark-record)
 
 (declare-function treemacs--helpful-hydra/body "treemacs-mode")
+
+(defvar bookmark-make-record-function)
 
 (defvar-local treemacs--eldoc-msg nil
   "Message to be output by `treemacs--eldoc-function'.
@@ -75,14 +84,20 @@ Prefer evil keybinds, otherwise pick the first result."
             (-if-let (evil-keys (--first (eq 'treemacs-state (aref it 0)) keys))
                 (--map (aref evil-keys it) (number-sequence 1 (- (length evil-keys) 1)))
               (--map (aref (car keys) it) (number-sequence 0 (- (length (car keys)) 1)))))))
-      (setq key
-            (pcase key
-              ("<return>"  "RET")
-              ("<left>"    "LEFT")
-              ("<right>"   "RIGHT")
-              ("<up>"      "UP")
-              ("<down>"    "DOWN")
-              (_ key)))
+      (setf key
+            (s-replace-all
+             '(("<return>" . "RET")
+               ("<left>"   . "LEFT")
+               ("<right>"  . "RIGHT")
+               ("<up>"     . "UP")
+               ("<down>"   . "DOWN")
+               ("^"        . "C-")
+               ("⇢⌥"     . ">O-")
+               ("⌥"       . "O-")
+               ("⇢⌘"      . ">#-")
+               ("⌘"       . "#-")
+               ("⇧"        . "S-"))
+             key))
       (cons (s-pad-right pad " " (format "_%s_:" key)) key))
     (cons (s-pad-right pad " " (format "_%s_:" " ")) " ")))
 
@@ -100,6 +115,7 @@ to it will instead show a blank."
              (column-files       (propertize "File Management" 'face 'treemacs-help-column-face))
              (column-toggles     (propertize "Toggles " 'face 'treemacs-help-column-face))
              (column-projects    (propertize "Projects" 'face 'treemacs-help-column-face))
+             (column-ws          (propertize "Workspaces" 'face 'treemacs-help-column-face))
              (column-misc        (propertize "Misc." 'face 'treemacs-help-column-face))
              (key-next-line      (treemacs--find-keybind #'treemacs-next-line))
              (key-prev-line      (treemacs--find-keybind #'treemacs-previous-line))
@@ -140,32 +156,38 @@ to it will instead show a blank."
              (key-remove-project (treemacs--find-keybind #'treemacs-remove-project-from-workspace 12))
              (key-rename-project (treemacs--find-keybind #'treemacs-rename-project 12))
              (key-close-above    (treemacs--find-keybind #'treemacs-collapse-parent-node))
+             (key-edit-ws        (treemacs--find-keybind #'treemacs-edit-workspaces 12))
+             (key-create-ws      (treemacs--find-keybind #'treemacs-create-workspace 12))
+             (key-remove-ws      (treemacs--find-keybind #'treemacs-remove-workspace 12))
+             (key-rename-ws      (treemacs--find-keybind #'treemacs-rename-workspace 12))
+             (key-switch-ws      (treemacs--find-keybind #'treemacs-switch-workspace 12))
+             (key-fallback-ws    (treemacs--find-keybind #'treemacs-set-fallback-workspace 12))
              (hydra-str
               (format
                "
 %s
-%s              │ %s              │ %s    │ %s                │ %s                  │ %s
-――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
-%s next Line        │ %s dwim TAB            │ %s create file │ %s follow mode      │ %s add project    │ %s refresh
-%s prev line        │ %s dwim RET            │ %s create dir  │ %s filewatch mode   │ %s remove project │ %s (re)set width
-%s next neighbour   │ %s open no split       │ %s rename      │ %s git mode         │ %s rename project │ %s copy path
-%s prev neighbour   │ %s open horizontal     │ %s delete      │ %s show dotfiles    │                           │ %s copy root
-%s goto parent      │ %s open vertical       │ %s copy        │ %s resizability     │                           │ %s re-sort
-%s down next window │ %s open ace            │ %s move        │ %s fringe indicator │                           │ %s bookmark
-%s up next window   │ %s open ace horizontal │                    │                         │                           │
-                        │ %s open ace vertical   │                    │                         │                           │
-                        │ %s open mru window     │                    │                         │                           │
-                        │ %s open externally     │                    │                         │                           │
-                        │ %s close parent        │                    │                         │                           │
+%s              │ %s              │ %s    │ %s                │ %s                  │ %s                  │ %s
+―――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+%s next Line        │ %s dwim TAB            │ %s create file │ %s follow mode      │ %s add project    │ %s Edit Workspaces  │ %s refresh
+%s prev line        │ %s dwim RET            │ %s create dir  │ %s filewatch mode   │ %s remove project │ %s Create Workspace │ %s (re)set width
+%s next neighbour   │ %s open no split       │ %s rename      │ %s git mode         │ %s rename project │ %s Remove Workspace │ %s copy path
+%s prev neighbour   │ %s open horizontal     │ %s delete      │ %s show dotfiles    │                           │ %s Rename Workspace │ %s copy root
+%s goto parent      │ %s open vertical       │ %s copy        │ %s resizability     │                           │ %s Switch Workspace │ %s re-sort
+%s down next window │ %s open ace            │ %s move        │ %s fringe indicator │                           │ %s Set Fallback     │ %s bookmark
+%s up next window   │ %s open ace horizontal │                    │                         │                           │                             │
+                        │ %s open ace vertical   │                    │                         │                           │                             │
+                        │ %s open mru window     │                    │                         │                           │                             │
+                        │ %s open externally     │                    │                         │                           │                             │
+                        │ %s close parent        │                    │                         │                           │                             │
 "
                title
-               column-nav               column-nodes          column-files           column-toggles          column-projects          column-misc
-               (car key-next-line)      (car key-tab)         (car key-create-file)  (car key-follow-mode)   (car key-add-project)    (car key-refresh)
-               (car key-prev-line)      (car key-ret)         (car key-create-dir)   (car key-fwatch-mode)   (car key-remove-project) (car key-set-width)
-               (car key-next-neighbour) (car key-open)        (car key-rename)       (car key-git-mode)      (car key-rename-project) (car key-copy-path)
-               (car key-prev-neighbour) (car key-open-horiz)  (car key-delete)       (car key-show-dotfiles)                          (car key-copy-root)
-               (car key-goto-parent)    (car key-open-vert)   (car key-copy-file)    (car key-toggle-width)                           (car key-resort)
-               (car key-down-next-w)    (car key-open-ace)    (car key-move-file)    (car key-fringe-mode)                            (car key-bookmark)
+               column-nav               column-nodes          column-files           column-toggles          column-projects          column-ws             column-misc
+               (car key-next-line)      (car key-tab)         (car key-create-file)  (car key-follow-mode)   (car key-add-project)    (car key-edit-ws)     (car key-refresh)
+               (car key-prev-line)      (car key-ret)         (car key-create-dir)   (car key-fwatch-mode)   (car key-remove-project) (car key-create-ws)   (car key-set-width)
+               (car key-next-neighbour) (car key-open)        (car key-rename)       (car key-git-mode)      (car key-rename-project) (car key-remove-ws)   (car key-copy-path)
+               (car key-prev-neighbour) (car key-open-horiz)  (car key-delete)       (car key-show-dotfiles)                          (car key-rename-ws)   (car key-copy-root)
+               (car key-goto-parent)    (car key-open-vert)   (car key-copy-file)    (car key-toggle-width)                           (car key-switch-ws)   (car key-resort)
+               (car key-down-next-w)    (car key-open-ace)    (car key-move-file)    (car key-fringe-mode)                            (car key-fallback-ws) (car key-bookmark)
                (car key-up-next-w)      (car key-open-ace-h)
                                         (car key-open-ace-v)
                                         (car key-open-mru)
@@ -214,6 +236,12 @@ to it will instead show a blank."
               (,(cdr key-remove-project) #'treemacs-remove-project-from-workspace)
               (,(cdr key-rename-project) #'treemacs-rename-project)
               (,(cdr key-close-above)    #'treemacs-collapse-parent-node)
+              (,(cdr key-edit-ws)        #'treemacs-edit-workspaces)
+              (,(cdr key-create-ws)      #'treemacs-create-workspace)
+              (,(cdr key-remove-ws)      #'treemacs-remove-workspace)
+              (,(cdr key-rename-ws)      #'treemacs-rename-workspace)
+              (,(cdr key-switch-ws)      #'treemacs-switch-workspace)
+              (,(cdr key-fallback-ws)    #'treemacs-set-fallback-workspace)
               ("?" nil "Exit"))))
         (treemacs--helpful-hydra/body))
     (treemacs-log "The helpful hydra cannot be summoned without an existing treemacs buffer.")))
@@ -232,6 +260,16 @@ to it will instead show a blank."
       (define-key map (kbd "c a")   #'treemacs-collapse-all-projects)
       map)
     "Keymap for project-related commands in `treemacs-mode'.")
+  (defvar treemacs-workspace-map
+    (let ((map (make-sparse-keymap)))
+      (define-key map (kbd "r")     #'treemacs-rename-workspace)
+      (define-key map (kbd "a")     #'treemacs-create-workspace)
+      (define-key map (kbd "d")     #'treemacs-remove-workspace)
+      (define-key map (kbd "s")     #'treemacs-switch-workspace)
+      (define-key map (kbd "e")     #'treemacs-edit-workspaces)
+      (define-key map (kbd "f")     #'treemacs-set-fallback-workspace)
+      map)
+    "Keymap for workspace-related commands in `treemacs-mode'.")
   (defvar treemacs-node-visit-map
     (let ((map (make-sparse-keymap)))
       (define-key map (kbd "v")        #'treemacs-visit-node-vertical-split)
@@ -298,6 +336,7 @@ to it will instead show a blank."
       (define-key map (kbd "s")         #'treemacs-resort)
       (define-key map (kbd "b")         #'treemacs-add-bookmark)
       (define-key map (kbd "C-c C-p")   treemacs-project-map)
+      (define-key map (kbd "C-c C-w")   treemacs-workspace-map)
       (define-key map (kbd "<M-up>")    #'treemacs-move-project-up)
       (define-key map (kbd "<M-down>")  #'treemacs-move-project-down)
       (define-key map (kbd "<backtab>") #'treemacs-collapse-all-projects)
@@ -306,13 +345,17 @@ to it will instead show a blank."
       (define-key map (kbd "h")         #'treemacs-root-up)
       (define-key map (kbd "l")         #'treemacs-root-down)
       (define-key map (kbd "H")         #'treemacs-collapse-parent-node)
+      (define-key map (kbd "!")         #'treemacs-run-shell-command-for-current-node)
+      (define-key map (kbd "M-!")       #'treemacs-run-shell-command-in-project-root)
       map)
     "Keymap for `treemacs-mode'."))
 
 (defun treemacs--setup-mode-line ()
   "Create either a simple modeline, or integrate into spaceline."
   (setq mode-line-format
-        (cond ((fboundp 'spaceline-install)
+        (cond (treemacs-user-mode-line-format
+               treemacs-user-mode-line-format)
+              ((fboundp 'spaceline-install)
                (spaceline-install
                 "treemacs" '((workspace-number
                               :face highlight-face)
@@ -359,11 +402,12 @@ Will simply return `treemacs--eldoc-msg'."
 (define-derived-mode treemacs-mode special-mode "Treemacs"
   "A major mode for displaying the file system in a tree layout."
 
-  (setq buffer-read-only    t
-        truncate-lines      t
-        indent-tabs-mode    nil
-        desktop-save-buffer nil
-        window-size-fixed   (when treemacs--width-is-locked 'width))
+  (setq buffer-read-only         t
+        truncate-lines           t
+        indent-tabs-mode         nil
+        desktop-save-buffer      nil
+        window-size-fixed        (when treemacs--width-is-locked 'width)
+        treemacs--in-this-buffer t)
 
   (unless treemacs-show-cursor
     (setq cursor-type nil))
@@ -380,6 +424,8 @@ Will simply return `treemacs--eldoc-msg'."
   (setq-local show-paren-mode nil)
   (setq-local eldoc-documentation-function #'treemacs--eldoc-function)
   (setq-local eldoc-message-commands treemacs--eldoc-obarray)
+  ;; integrate with bookmark.el
+  (setq-local bookmark-make-record-function #'treemacs--make-bookmark-record)
   (electric-indent-local-mode -1)
   (visual-line-mode -1)
   (font-lock-mode -1)
@@ -388,7 +434,7 @@ Will simply return `treemacs--eldoc-msg'."
   ;; fringe indicator must be set up right here, before hl-line-mode, since activating hl-line-mode will
   ;; invoke the movement of the fringe overlay that would otherwise be nil
   (when treemacs-fringe-indicator-mode
-    (treemacs--setup-fringe-indicator-mode))
+    (treemacs--enable-fringe-indicator))
   (hl-line-mode t)
 
   ;; needs to run manually the first time treemacs is loaded, since the hook is only added *after*
@@ -398,10 +444,7 @@ Will simply return `treemacs--eldoc-msg'."
 
   (add-hook 'window-configuration-change-hook #'treemacs--on-window-config-change)
   (add-hook 'kill-buffer-hook #'treemacs--on-buffer-kill nil t)
-  ;; (add-hook 'after-make-frame-functions #'treemacs--remove-treemacs-window-in-new-frames)
-  (add-to-list 'delete-frame-functions #'treemacs--on-frame-kill)
   (add-hook 'post-command-hook #'treemacs--post-command nil t)
-
 
   (treemacs--build-indentation-cache 6)
   (treemacs--select-icon-set)

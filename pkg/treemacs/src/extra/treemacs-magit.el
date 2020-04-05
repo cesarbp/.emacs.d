@@ -1,10 +1,10 @@
 ;;; treemacs-magit.el --- Magit integration for treemacs -*- lexical-binding: t -*-
 
-;; Copyright (C) 2019 Alexander Miller
+;; Copyright (C) 2020 Alexander Miller
 
 ;; Author: Alexander Miller <alexanderm@web.de>
-;; Package-Requires: ((emacs "25.2") (treemacs "0.0") (pfuture "1.3" )(magit "2.90.0"))
-;; Package-Version: 0
+;; Package-Requires: ((emacs "25.2") (treemacs "0.0") (pfuture "1.3" ) (magit "2.90.0"))
+;; Version: 0
 ;; Homepage: https://github.com/Alexander-Miller/treemacs
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -18,7 +18,7 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 ;;; Closing the gaps for filewatch- and git-modes in conjunction with magit.
@@ -74,7 +74,7 @@ filewatch-mode's mechanics to update the entire project."
             (dom-node (treemacs-find-in-dom project-root)))
        (when (and dom-node
                   (null (treemacs-dom-node->refresh-flag dom-node)))
-         (treemacs--set-refresh-flags project-root))))))
+         (treemacs--set-refresh-flags project-root 'magit-refresh project-root))))))
 
 (defun treemacs-magit--extended-git-mode-update (magit-root)
   "Update the project at the given MAGIT-ROOT.
@@ -124,7 +124,7 @@ Will update nodes under MAGIT-ROOT with output in PFUTURE-BUFFER."
            (let* ((node (treemacs-node-at-point))
                   (start-depth (-some-> node (treemacs-button-get :depth)))
                   (curr-depth start-depth)
-                  (path (-some-> node (treemacs-button-get :path))))
+                  (path (-some-> node (treemacs-button-get :key))))
              (treemacs-with-writable-buffer
               (while (and node
                           (file-exists-p path)

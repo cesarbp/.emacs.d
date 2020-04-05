@@ -1,6 +1,6 @@
 ;;; treemacs.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2019 Alexander Miller
+;; Copyright (C) 2020 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 ;;; Simple bits of code to make treemacs compatible with other packages
@@ -23,6 +23,7 @@
 
 (require 'dash)
 (require 'treemacs-customization)
+(require 'treemacs-scope)
 (require 'treemacs-core-utils)
 (require 'treemacs-interface)
 (eval-and-compile (require 'treemacs-macros))
@@ -33,10 +34,8 @@
  (push '(treemacs-workspace . :never) frameset-filter-alist))
 
 (with-eval-after-load 'winum
-  (when (boundp 'winum-ignored-buffers)
-    (dolist (n (number-sequence 1 5))
-      (add-to-list 'winum-ignored-buffers
-                   (format "%sFramebuffer-%s*" treemacs--buffer-name-prefix n)))))
+  (when (boundp 'winum-ignored-buffers-regexp)
+    (add-to-list 'winum-ignored-buffers-regexp (regexp-quote (format "%sScoped-Buffer-" treemacs--buffer-name-prefix)))))
 
 (with-eval-after-load 'ace-window
   (when (boundp 'aw-ignored-buffers)
@@ -55,7 +54,7 @@
     (when (or t(eq persp-activated-for 'frame))
       (-when-let (w (--first (treemacs-is-treemacs-window? it)
                              (window-list)))
-        (unless (assoc (selected-frame) treemacs--buffer-access)
+        (unless (assoc (treemacs-scope->current-scope treemacs--current-scope-type) treemacs--scope-storage)
           (delete-window w)))))
   (declare-function treemacs--remove-treemacs-window-in-new-frames "treemacs-compatibility")
   (if (boundp 'persp-activated-functions)
@@ -95,12 +94,26 @@ width of the new window when the treemacs window is visible."
       (add-hook 'org-store-link-functions #'treemacs-store-org-link))))
 
 (with-eval-after-load 'which-key
-  (defun treemacs--fix-width-after-which-key ()
-    (--when-let (treemacs-get-local-window)
-      (with-selected-window it
-        (treemacs-set-width :reset))))
-  (advice-add 'which-key--update :after 'treemacs--fix-width-after-which-key)
-  (advice-add 'which-key--hide-buffer-side-window :after 'treemacs--fix-width-after-which-key))
+
+  (defun treemacs--fix-width-after-which-key (func &rest args)
+      "Advice to sure treemacs' window size stays put when which-key is active.
+  Wraps original FUNC + ARGS."
+      (let* ((window (treemacs-get-local-window))
+             (should-toggle (and (with-no-warnings (which-key--popup-showing-p))
+                                 (when window
+                                   (not (buffer-local-value 'treemacs--width-is-locked
+                                                            (window-buffer window))))))
+             (treemacs--no-messages t))
+        (when should-toggle
+          (with-selected-window window
+            (treemacs-toggle-fixed-width)))
+        (apply func args)
+        (when should-toggle
+          (with-selected-window window
+            (treemacs-toggle-fixed-width)))))
+
+  (advice-add 'which-key--update :around 'treemacs--fix-width-after-which-key)
+  (advice-add 'which-key--hide-buffer-side-window :around 'treemacs--fix-width-after-which-key))
 
 (with-eval-after-load 'evil-escape
   (when (boundp 'evil-escape-excluded-major-modes)

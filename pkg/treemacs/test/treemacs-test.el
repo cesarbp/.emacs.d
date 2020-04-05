@@ -1,6 +1,6 @@
 ;;; treemacs-test.el --- Tests for treemacs
 
-;; Copyright (C) 2019 Alexander Miller
+;; Copyright (C) 2020 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 
@@ -110,7 +110,7 @@
                 (call-interactively #'treemacs-TAB-action)
                 (should (equal '("Variables" "Functions")
                                (-map #'treemacs--get-label-of
-                                     (treemacs--get-children-of (treemacs-current-button)))))
+                                     (treemacs-collect-child-nodes (treemacs-current-button)))))
 
                 (call-interactively #'treemacs-next-line)
                 (call-interactively #'treemacs-next-line)
@@ -118,7 +118,7 @@
                 (call-interactively #'treemacs-TAB-action)
                 (should (equal '("fn1" "fn2")
                                (-map #'treemacs--get-label-of
-                                     (treemacs--get-children-of (treemacs-current-button)))))
+                                     (treemacs-collect-child-nodes (treemacs-current-button)))))
 
                 ;; open a tag
                 (call-interactively #'treemacs-next-line)

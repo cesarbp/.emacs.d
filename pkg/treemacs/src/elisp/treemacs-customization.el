@@ -1,6 +1,6 @@
 ;;; treemacs.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2019 Alexander Miller
+;; Copyright (C) 2020 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -13,15 +13,17 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 ;;; Customize interface definitions.
 
 ;;; Code:
 
+(require 'cl-lib)
+(require 'widget)
+(require 'dash)
 (require 'f)
-(defvar treemacs--indentation-string-cache)
 
 (defun treemacs--find-python3 ()
   "Determine the location of python 3."
@@ -32,12 +34,13 @@
            (s-trim)
            (s-lines)
            (--first
-	    (when (not (file-exists-p it))
-	      (->> (concat (shell-quote-argument it) " --version")
-		   (shell-command-to-string)
-		   (s-trim)
-		   (s-replace "Python " "")
-		   (version<= "3"))))))))
+            (when (file-exists-p it)
+              (->> (concat (shell-quote-argument it) " --version")
+                   (shell-command-to-string)
+                   (s-trim)
+                   (s-replace "Python " "")
+                   (s-left 1)
+                   (version<= "3"))))))))
 
 (cl-macrolet
     ((define-action-widget (name include-default include-tab include-ret)
@@ -84,6 +87,12 @@
 
 (defgroup treemacs-hooks nil
   "Hooks provided by treemacs."
+  :group 'treemacs
+  :prefix "treemacs-"
+  :link '(url-link :tag "Repository" "https://github.com/Alexander-Miller/treemacs"))
+
+(defgroup treemacs-follow nil
+  "Customizations for the behaviour of the treemacs' file and tag following."
   :group 'treemacs
   :prefix "treemacs-"
   :link '(url-link :tag "Repository" "https://github.com/Alexander-Miller/treemacs"))
@@ -195,20 +204,12 @@ To keep the alist clean changes should not be made directly, but with
   :type '(alist :key-type symbol :value-type treemacs-ret-action)
   :group 'treemacs)
 
-(defcustom treemacs-follow-after-init nil
-  "When t always find and focus the current file when treemacs is built.
-
-A treemacs buffer is built when after calling `treemacs-init' or
-`treemacs-projectle-init'. This will ignore `treemacs-follow-mode'."
-  :type 'boolean
-  :group 'treemacs)
-
 (defcustom treemacs-dotfiles-regex (rx bol "." (1+ any))
   "Files matching this regular expression count as dotfiles."
   :type 'regexp
   :group 'treemacs)
 
-(defcustom treemacs-sorting 'alphabetic-desc
+(defcustom treemacs-sorting 'alphabetic-asc
   "Indicates how treemacs will sort its files and directories.
 Files will still always be shown after directories.
 
@@ -362,49 +363,10 @@ To disable all refresh messages use `treemacs-silent-refresh'."
   :type 'boolean
   :group 'treemacs)
 
-(defcustom treemacs-file-follow-delay 0.2
-  "Delay in seconds of idle time for treemacs to follow the selected window."
-  :type 'number
-  :group 'treemacs)
-
-(defcustom treemacs-tag-follow-delay 1.5
-  "Delay in seconds of inactivity for `treemacs-tag-follow-mode' to trigger."
-  :type 'number
-  :group 'treemacs)
-
 (defcustom treemacs-no-png-images nil
   "When non-nil treemacs will use TUI string icons even when running in a GUI.
 The change will apply the next time a treemacs buffer is created."
   :type 'boolean
-  :group 'treemacs)
-
-(defcustom treemacs-tag-follow-cleanup t
-  "When non-nil `treemacs-tag-follow-mode' will close file nodes it is leaving.
-When jumping between different files this can prevent the view from being
-flooded with their tags."
-  :type 'boolean
-  :group 'treemacs)
-
-(defcustom treemacs-recenter-after-file-follow nil
-  "Decides when to recenter view after following a file.
-Possible values are:
- * nil: never recenter
- * 'always: always recenter
- * 'on-distance: recenter based on `treemacs-recenter-distance'"
-  :type '(choice (const :tag "Always" always)
-                 (const :tag "Based on Distance" on-distance)
-                 (const :tag "Never" nil))
-  :group 'treemacs)
-
-(defcustom treemacs-recenter-after-tag-follow nil
-  "Decides when to recenter view after following a tag.
-Possible values are:
- * nil: never recenter
- * 'always: always recenter
- * 'on-distance: recenter based on `treemacs-recenter-distance'"
-  :type '(choice (const :tag "Always" always)
-                 (const :tag "Based on Distance" on-distance)
-                 (const :tag "Never" nil))
   :group 'treemacs)
 
 (defcustom treemacs-recenter-after-project-jump 'always
@@ -447,23 +409,6 @@ This applies to actions like `treemacs-copy-path-at-point'."
 This applies to actions like treemacs not finding any tags it can show when
 `treemacs-toggle-node' is called on a file node."
   :type 'boolean
-  :group 'treemacs)
-
-(make-obsolete-variable 'treemacs-follow-recenter-distance 'treemacs-recenter-distance "v2.5")
-(defcustom treemacs-follow-recenter-distance 0.1
-  "Minimum distance from the top/bottom for (tag-)follow mode to recenter.
-Treemacs will be calling `recenter' after following a file/tag if the distance
-between point and the top/bottom of the treemacs window is less then this many
-lines. The value is not an absolute line count, but a percentage, with 0.0
-being 0% and 1.0 being 100%. This means that when this variable is set to 0.1
-`recenter' will be called within a 10% distance of the window top/bottom. For a
-window height of 40 lines that means point being within the first or last 4
-lines of the treemacs window.
-Will only take effect if `treemacs-recenter-after-tag-follow' and/or
-`treemacs-recenter-after-file-follow' is non-nil.
-
-Note that this does *not* take `scroll-margin' into account."
-  :type 'float
   :group 'treemacs)
 
 (defcustom treemacs-recenter-distance 0.1
@@ -535,19 +480,15 @@ inline functions, macros, faces, variables, customizations and types."
   :type 'alist
   :group 'treemacs)
 
-(defcustom treemacs-project-follow-cleanup nil
-  "When non-nil `treemacs-follow-mode' will close projects it is leaving.
-This means that treemacs will make sure that only the currently followed project
-is expanded while all others will remain collapsed.
-
-Setting this to t might lead to noticeable slowdowns, at least when `treemacs-git-mode'
-is enabled, since constantly expanding an entire project is fairly expensive."
-  :type 'boolean
-  :group 'treemacs)
-
 (defcustom treemacs-persist-file
   (f-join user-emacs-directory ".cache" "treemacs-persist")
   "Path to the file treemacs uses to persist its state."
+  :group 'treemacs
+  :type 'string)
+
+(defcustom treemacs-last-error-persist-file
+  (f-join user-emacs-directory ".cache" "treemacs-persist-at-last-error")
+  "File that stores the treemacs state as it was during the last load error."
   :group 'treemacs
   :type 'string)
 
@@ -613,6 +554,90 @@ missing project will not appear in the project list next time Emacs is started."
   :type 'boolean
   :group 'treemacs)
 
+(defcustom treemacs-directory-name-transformer #'identity
+  "Transformer function that is applied to directory names before rendering for any sort of cosmetic effect."
+  :type 'function
+  :group 'treemacs)
+
+(defcustom treemacs-file-name-transformer #'identity
+  "Transformer function that is applied to file names before rendering for any sort of cosmetic effect."
+  :type 'function
+  :group 'treemacs)
+
+(make-obsolete-variable 'treemacs-follow-recenter-distance 'treemacs-recenter-distance "v2.5")
+(defcustom treemacs-follow-recenter-distance 0.1
+  "Minimum distance from the top/bottom for (tag-)follow mode to recenter.
+Treemacs will be calling `recenter' after following a file/tag if the distance
+between point and the top/bottom of the treemacs window is less then this many
+lines. The value is not an absolute line count, but a percentage, with 0.0
+being 0% and 1.0 being 100%. This means that when this variable is set to 0.1
+`recenter' will be called within a 10% distance of the window top/bottom. For a
+window height of 40 lines that means point being within the first or last 4
+lines of the treemacs window.
+Will only take effect if `treemacs-recenter-after-tag-follow' and/or
+`treemacs-recenter-after-file-follow' is non-nil.
+
+Note that this does *not* take `scroll-margin' into account."
+  :type 'float
+  :group 'treemacs-follow)
+
+(defcustom treemacs-follow-after-init nil
+  "When t always find and focus the current file when treemacs is built.
+
+A treemacs buffer is built when after calling `treemacs-init' or
+`treemacs-projectle-init'. This will ignore `treemacs-follow-mode'."
+  :type 'boolean
+  :group 'treemacs-follow)
+
+(defcustom treemacs-file-follow-delay 0.2
+  "Delay in seconds of idle time for treemacs to follow the selected window."
+  :type 'number
+  :group 'treemacs-follow)
+
+(defcustom treemacs-tag-follow-delay 1.5
+  "Delay in seconds of inactivity for `treemacs-tag-follow-mode' to trigger."
+  :type 'number
+  :group 'treemacs-follow)
+
+(defcustom treemacs-tag-follow-cleanup t
+  "When non-nil `treemacs-tag-follow-mode' will close file nodes it is leaving.
+When jumping between different files this can prevent the view from being
+flooded with their tags."
+  :type 'boolean
+  :group 'treemacs-follow)
+
+(defcustom treemacs-recenter-after-file-follow nil
+  "Decides when to recenter view after following a file.
+Possible values are:
+ * nil: never recenter
+ * 'always: always recenter
+ * 'on-distance: recenter based on `treemacs-recenter-distance'"
+  :type '(choice (const :tag "Always" always)
+                 (const :tag "Based on Distance" on-distance)
+                 (const :tag "Never" nil))
+  :group 'treemacs-follow)
+
+(defcustom treemacs-recenter-after-tag-follow nil
+  "Decides when to recenter view after following a tag.
+Possible values are:
+ * nil: never recenter
+ * 'always: always recenter
+ * 'on-distance: recenter based on `treemacs-recenter-distance'"
+  :type '(choice (const :tag "Always" always)
+                 (const :tag "Based on Distance" on-distance)
+                 (const :tag "Never" nil))
+  :group 'treemacs-follow)
+
+(defcustom treemacs-project-follow-cleanup nil
+  "When non-nil `treemacs-follow-mode' will close projects it is leaving.
+This means that treemacs will make sure that only the currently followed project
+is expanded while all others will remain collapsed.
+
+Setting this to t might lead to noticeable slowdowns, at least when `treemacs-git-mode'
+is enabled, since constantly expanding an entire project is fairly expensive."
+  :type 'boolean
+  :group 'treemacs-follow)
+
 (defcustom treemacs-deferred-git-apply-delay 0.5
   "Delay in seconds of idle time before git fontification is applied.
 This is only relevant when using the deferred variant of git-mode."
@@ -652,9 +677,10 @@ to reduce the size of the output to a manageable volume for treemacs."
   :group 'treemacs-git)
 
 (defcustom treemacs-is-never-other-window nil
-  "When non-nil treemacs will never be used as `other-window'.
-This can prevent other packages from opening other buffers in the treemacs
-window. It also means treemacs is never selected by calls to `other-window'."
+  "When non-nil treemacs will use the `no-other-window' parameter.
+
+In practice means that treemacs will become invisible to commands like
+`other-window' or `evil-window-left'."
   :type 'boolean
   :group 'treemacs-window)
 
@@ -695,6 +721,83 @@ Valid values are
                  (const right))
   :group 'treemacs)
 
+(defcustom treemacs-create-project-functions nil
+  "Hooks to run whenever a project is created.
+Will be called with the new project as the sole argument."
+  :type 'hook
+  :group 'treemacs-hooks)
+
+(defcustom treemacs-create-file-functions nil
+  "Hooks to run whenever a file or directory is created.
+Applies only when using `treemacs-create-file' or `treemacs-create-dir'.
+Will be called with the created file's or dir's path as the sole argument."
+  :type 'hook
+  :group 'treemacs-hooks)
+
+(defcustom treemacs-delete-project-functions nil
+  "Hooks to run whenever a project is deleted.
+Will be called with the deleted project as the sole argument *after* it has been
+deleted."
+  :type 'hook
+  :group 'treemacs-hooks)
+
+(defcustom treemacs-rename-project-functions nil
+  "Hooks to run whenever a project is renamed.
+Will be called with the renamed project and the old name as its argumens."
+  :type 'hook
+  :group 'treemacs-hooks)
+
+(defcustom treemacs-create-workspace-functions nil
+  "Hooks to run whenever a workspace is created.
+Will be called with the new workspace as the sole argument."
+  :type 'hook
+  :group 'treemacs-hooks)
+
+(defcustom treemacs-delete-workspace-functions nil
+  "Hooks to run whenever a workspace is deleted.
+Will be called with the deleted workspace as the sole argument *after* it has
+been deleted."
+  :type 'hook
+  :group 'treemacs-hooks)
+
+(defcustom treemacs-rename-workspace-functions nil
+  "Hooks to run whenever a workspace is renamed.
+Will be called with the renamed workspace and the old name as its argumens."
+  :type 'hook
+  :group 'treemacs-hooks)
+
+(defcustom treemacs-switch-workspace-hook nil
+  "Hooks to run whenever the workspace is changed.
+The current workspace will be available as `treemacs-current-workspace'."
+  :type 'hook
+  :group 'treemacs-hooks)
+
+(defcustom treemacs-workspace-edit-hook nil
+  "Hooks to run whenever the entire workspace layout has been rebuilt.
+This hook runs after `treemacs-finish-edit' has been called. After such an edit
+any number (including zero) of workspaces and projects may have been changed or
+created or deleted."
+  :type 'hook
+  :group 'treemacs-hooks)
+
+(defcustom treemacs-bookmark-title-template "Treemacs - ${project}: ${label}"
+  "Template for default bookmark titles.
+
+The following replacements are available:
+ * ${project}: The label of the project.
+ * ${label}: Label of the current button.
+ * ${label:N} Label of the Nth parent.
+   If the parent does not exist, an empty string.
+ * ${label-path}: Label path of the button.
+   For example, \"Project/directory/file.txt\"
+ * ${label-path:N}: Last N components of the label path.
+ * ${file-path}: Absolute file-system path of the node.
+   If the node is a top-level extension node, this expands to an empty string.
+   If the node is a directory or or project extension, the path of its parent.
+ * ${file-path:N}: Last N components of the filesystem path."
+  :type 'string
+  :group 'treemacs)
+
 (defcustom treemacs-pre-refresh-hook nil
   "Hooks to run right before the refresh process for a project kicks off.
 During the refresh the project is effectively collapsed and then expanded again.
@@ -708,8 +811,7 @@ collects for its refresh process:
    if the current button is nil.
  * The nearest file path, as collected with `treemacs--nearest-path'. Is nil if
    point is on the header.
- * The current button's tag path, as collected by `treemacs--tags-path-of'. Is
-   nil if the current button is nil."
+ * The current button's tag path. Is nil if the current button is nil."
   :type 'hook
   :group 'treemacs-hooks)
 
@@ -728,8 +830,7 @@ button's position will be wrong, even if it wasn't deleted outright):
    if the current button is nil.
  * The nearest file path, as collected with `treemacs--nearest-path'. Is nil if
    point was on the header.
- * The current button's tag path, as collected by `treemacs--tags-path-of'. Is
-   nil if the current button is nil."
+ * The current button's tag path. Is nil if the current button is nil."
   :type 'hook
   :group 'treemacs-hooks)
 
@@ -755,9 +856,34 @@ general window selection commands like `other-window'."
 (defcustom treemacs-workspace-first-found-functions nil
   "Hooks that run when treemacs finds a workspace for the first time.
 Hooks are expected to take 2 arguments: the workspace that was found and the
-frame it was found for."
+current scope (frame or perspective) it was found for."
   :type 'hook
   :group 'treemacs-hooks)
+
+(defconst treemacs-last-period-regex-value "\\.[^.]*\\'")
+(defconst treemacs-first-period-regex-value "\\.")
+(defcustom treemacs-file-extension-regex treemacs-last-period-regex-value
+  "Decides how treemacs determines a file's extension.
+There are 2 options:
+ - An extension should be everything past the *last* period of the file name.
+   In this case this shoud be set to `treemacs-last-period-regex-value'
+ - An extension should be everything p
+ast the *first* period of the file name
+   In this case this should be set to `treemacs-first-period-regex-value'"
+  :group 'treemacs
+  :type `(choice (const :tag "Text after first period" ,treemacs-first-period-regex-value)
+                 (const :tag "Text after last period" ,treemacs-last-period-regex-value)))
+
+(defcustom treemacs-user-mode-line-format nil
+  "Custom mode line format to be used in `treemacs-mode'.
+
+If nil treemacs will look for default value provided by `spaceline', `moody'
+or `doom-modeline' in that order. Finally, if none of these packages is
+available \"Treemacs\" text will be displayed.
+
+For more specific information about formatting mode line check `mode-line-format'."
+  :type 'sexp
+  :group 'treemacs)
 
 (provide 'treemacs-customization)
 

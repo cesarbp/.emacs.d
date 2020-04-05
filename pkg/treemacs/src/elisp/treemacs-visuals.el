@@ -1,6 +1,6 @@
 ;;; treemacs.el --- A tree style file viewer package -*- lexical-binding: t -*-
 
-;; Copyright (C) 2019 Alexander Miller
+;; Copyright (C) 2020 Alexander Miller
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 ;;; Handling of visuals in general and icons in particular.
@@ -24,79 +24,25 @@
 (require 'pulse)
 (require 'hl-line)
 (require 'treemacs-core-utils)
+(require 'treemacs-scope)
 (require 'treemacs-themes)
+(require 'treemacs-icons)
 (require 'treemacs-customization)
 (require 'treemacs-fringe-indicator)
 (eval-and-compile
   (require 'inline)
   (require 'treemacs-macros))
 
-;; An explanation for the what and why of the icon highlighting code below:
-;; Using png images in treemacs has one annoying visual flaw: they overwrite the overlay
-;; used by hl-line, such that the line marked by hl-line will always show a 22x22 pixel
-;; gap wherever treemacs places an icon, regardess of transparency.
-;; Using xpm instead of png images is one way to work around this, but it degrades icon
-;; quality to an unacceptable degree. Another way is to directly change images' :background
-;; property. The backgrounds colors are derived from the current theme with `treemacs--setup-icon-highlight'
-;; and saved in `treemacs--selected-icon-background' and `treemacs--not-selected-icon-background'.
-;; Every icon string stores two images with the proper :background values in its properties
-;; 'img-selected and 'img-unselected. The 'display property of the icon in the current line
-;; is then highlighted, and the previously highlighted icon unhighlighted, by advising
-;; `hl-line-highlight'. The last displayed icon is saved as a button marker in `treemacs--last-highlight'.
-;; Since it is a marker in the treemacs buffer it is important for it to be reset whenever it might
-;; become invalid.
+(treemacs-import-functions-from "treemacs-icons"
+  treemacs-get-icon-value)
 
 (defvar-local treemacs--last-highlight nil
   "The last button treemacs has highlighted.")
-
-(defvar treemacs--not-selected-icon-background
-  (pcase (face-attribute 'default :background nil t)
-    ('unspecified
-     (prog1 "#2d2d31"
-       (unless (boundp 'treemacs-no-load-time-warnings)
-         (message "[Treemacs] Warning: coudn't find default background color for icons, falling back on #2d2d31."))))
-    ('unspecified-bg
-     (prog1 "#2d2d31"
-       (unless (boundp 'treemacs-no-load-time-warnings)
-         (message "[Treemacs] Warning: background color is unspecified, icons will likely look wrong. Falling back on #2d2d31."))))
-    (other other))
-  "Background for non-selected icons.")
-
-(defvar treemacs--selected-icon-background
-  (-let [bg (face-attribute 'hl-line :background nil t)]
-    (if (memq bg '(unspecified unspecified-b))
-        (prog1 treemacs--not-selected-icon-background
-          (unless (boundp 'treemacs-no-load-time-warnings)
-            (message "[Treemacs] Warning: couldn't find hl-line-mode's background color for icons, falling back on %s."
-                     treemacs--not-selected-icon-background)))
-      bg))
-  "Background for selected icons.")
-
 
 (defvar-local treemacs--indentation-string-cache-key nil
   "Cache key for `treemacs--indentation-string-cache.")
 (defvar-local treemacs--indentation-string-cache (vector)
   "Cached propertized indentation.")
-
-(define-inline treemacs--set-img-property (image property value)
-  "Set IMAGE's PROPERTY to VALUE."
-  ;; the emacs26 code where this is copied from says it's for internal
-  ;; use only - let's se how that goes
-  (inline-letevals (image property value)
-    (inline-quote
-     (progn
-       (plist-put (cdr ,image) ,property ,value)
-       ,value))))
-
-(define-inline treemacs--get-img-property (image property)
-  "Return the value of PROPERTY in IMAGE."
-  ;; code aken from emacs 26
-  (declare (side-effect-free t))
-  (inline-letevals (image property)
-    (inline-quote
-     (plist-get (cdr ,image) ,property))))
-(gv-define-setter treemacs--get-img-property (val img prop)
-  `(plist-put (cdr ,img) ,prop ,val))
 
 (define-inline treemacs--forget-last-highlight ()
   "Set `treemacs--last-highlight' to nil."
@@ -111,41 +57,14 @@
 (defun treemacs--tear-down-icon-highlight ()
   "Tear down highlighting advice when no treemacs buffer exists anymore."
   (treemacs--forget-last-highlight)
-  (unless treemacs--buffer-access
+  (unless treemacs--scope-storage
     (advice-remove #'hl-line-highlight #'treemacs--update-icon-selection)
     (advice-remove #'enable-theme      #'treemacs--setup-icon-background-colors)
     (advice-remove #'disable-theme     #'treemacs--setup-icon-background-colors)))
 
-(defun treemacs--setup-icon-background-colors (&rest _)
-  "Align icon backgrounds with current Emacs theme.
-Fetch the current Emacs theme's background & hl-line colors and inject them into
-the gui icons of every theme in `treemacs--themes'.
-Also called as advice after `load-theme', hence the ignored argument."
-  (let* ((default-background (face-attribute 'default :background nil t))
-         (hl-line-background (face-attribute 'hl-line :background nil t))
-         (test-icon               (with-no-warnings treemacs-icon-root))
-         (icon-background    (treemacs--get-img-property (get-text-property 0 'img-unselected test-icon) :background))
-         (icon-hl-background (treemacs--get-img-property (get-text-property 0 'img-selected test-icon) :background)))
-    (when (memq default-background '(unspecified-bg unspecified))
-      (treemacs-log "Current theme fails to specify default background color, falling back on #2d2d31")
-      (setq default-background "#2d2d31"))
-    ;; make sure we only change all the icons' colors when we have to
-    (unless (and (string= default-background icon-background)
-                 (string= hl-line-background icon-hl-background))
-      (setf treemacs--selected-icon-background hl-line-background
-            treemacs--not-selected-icon-background default-background)
-      (dolist (theme treemacs--themes)
-        (treemacs--maphash (treemacs-theme->gui-icons theme) (_ icon)
-          (treemacs--set-img-property
-           (get-text-property 0 'img-selected icon)
-           :background treemacs--selected-icon-background)
-          (treemacs--set-img-property
-           (get-text-property 0 'img-unselected icon)
-           :background treemacs--not-selected-icon-background))))))
-
 (defun treemacs--update-icon-selection ()
   "Highlight current icon, unhighlight `treemacs--last-highlight'."
-  (when (eq major-mode 'treemacs-mode)
+  (when treemacs--in-this-buffer
     (condition-case e
         (progn
           (when treemacs-fringe-indicator-mode
@@ -176,7 +95,7 @@ Also called as advice after `load-theme', hence the ignored argument."
               (cp (copy-sequence img)))
          ;; Icons may not always be images, as extensions may use text and e.g.
          ;; all-the-icons font icons as the icon.
-         (when (eq (car cp) 'image)
+         (when (eq (car-safe cp) 'image)
            (treemacs--set-img-property cp :background
                                        (face-attribute
                                         (overlay-get pulse-momentary-overlay 'face)
