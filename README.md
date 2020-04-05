@@ -1,55 +1,45 @@
-# lsp-ui
-
 [![MELPA](https://melpa.org/packages/lsp-ui-badge.svg)](https://melpa.org/#/lsp-ui)
-[![Join the chat](https://badges.gitter.im/emacs-lsp/lsp-ui.svg)](https://gitter.im/emacs-lsp/lsp-ui)
-[![Build Status](https://travis-ci.com/emacs-lsp/lsp-ui.svg?branch=master)](https://travis-ci.com/emacs-lsp/lsp-ui)
 
 <!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-refresh-toc -->
 **Table of Contents**
 
-- [lsp-ui](#lsp-ui)
-    - [Intro](#intro)
-    - [lsp-ui-sideline:](#lsp-ui-sideline)
-    - [lsp-ui-peek:](#lsp-ui-peek)
-    - [lsp-ui-doc](#lsp-ui-doc)
-    - [lsp-ui-imenu](#lsp-ui-imenu)
-    - [Contributing](#contributing)
+- [lsp-ui-sideline:](#lsp-ui-sideline)
+- [lsp-ui-peek:](#lsp-ui-peek)
+- [lsp-ui-imenu:](#lsp-ui-imenu)
+- [lsp-ui-doc:](#lsp-ui-doc)
 
 <!-- markdown-toc end -->
 
-## Intro
-
 This package contains all the higher level UI modules of `lsp-mode`, like flycheck support and code lenses.
 
-By default, `lsp-mode` automatically activates `lsp-ui` unless `lsp-auto-configure` is set to `nil`.
+More info to follow.
 
-You only have to put `(use-package lsp-ui)` in your config and the package will work out of the box.
-([use-package](https://github.com/jwiegley/use-package))
+To enable the package and its features:
 
-Or use the builtin package manager.
-
-```
-M-x ~package-install~ [RET] ~lsp-ui~ [RET]
+``` el
+(require 'lsp-ui)
+(add-hook 'lsp-mode-hook 'lsp-ui-mode)
 ```
 
-## lsp-ui-sideline:
+To enable `flycheck-mode` for a particular LSP client, add the following:
+
+```el
+(add-hook 'XXXXX-mode-hook 'flycheck-mode)
+```
+
+Otherwise the flycheck diagnostics will not be rendered.
+
+
+To customize:
+`M-x customize-group [RET] lsp-ui [RET]`
+
+# lsp-ui-sideline:
 
 Show informations of the symbols on the current line.
 It also show flycheck diagnostics and LSP code actions
 ![lsp-line](images/lsp-line.gif)
 
-Customization:
-
-- `lsp-ui-sideline-show-diagnostics` show diagnostics messages in sideline
-- `lsp-ui-sideline-show-hover` show hover messages in sideline
-- `lsp-ui-sideline-show-code-actions` show code actions in sideline
-- `lsp-ui-sideline-update-mode`
-When set to 'line' the information will be updated when user
-changes current line otherwise the information will be updated
-when user changes current point
-- `lsp-ui-sideline-delay` seconds to wait before showing sideline
-
-## lsp-ui-peek:
+# lsp-ui-peek:
 
 Add [peek](https://code.visualstudio.com/docs/editor/editingevolved#_peek) feature
 ![lsp-xref](images/lsp-xref.gif)
@@ -74,12 +64,9 @@ Other cross references:
 (lsp-ui-peek-find-custom 'base "$cquery/base")
 ```
 
-Customization:
+# lsp-ui-imenu
 
-- `lsp-ui-peek-enable` enable ‘lsp-ui-peek’
-- `lsp-ui-peek-show-directory` show the directory of files
-
-## lsp-ui-doc
+# lsp-ui-doc
 
 Show object documentation at point in a child frame.
 ![lsp-ui-doc](images/lsp-ui-doc.gif)
@@ -89,26 +76,3 @@ Show documentation in a WebKit widget
 
 Focus into lsp-ui-doc-frame
 ![lsp-ui-doc-focus-frame](images/lsp-ui-doc-focus-frame.gif)
-
-Customization:
-
-- `lsp-ui-doc-enable` enable lsp-ui-doc
-- `lsp-ui-doc-position` Where to display the doc
-- `lsp-ui-doc-delay` Number of seconds before showing the doc
-
-## lsp-ui-imenu
-
-Show imenu entries.
-
-![lsp-ui-doc](images/lsp-ui-imenu.png)
-
-Customization:
-
-- `lsp-ui-imenu-window-width` set window width
-- `lsp-ui-imenu--custom-mode-line-format` mode line format
-
-
-## Contributing
-
-Any kind of help is appreciated. If you want to help us maintaining this package,
-[leave a note](https://github.com/emacs-lsp/lsp-ui/issues/332).
