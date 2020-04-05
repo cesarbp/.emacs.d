@@ -89,7 +89,7 @@ https://github.com/tsdh/highlight-parentheses.el 1.1.0
 https://github.com/kawabata/wolfram-mode master
 https://github.com/hlissner/emacs-doom-themes master
 https://github.com/rust-lang/rust-mode master
-https://github.com/emacs-lsp/lsp-mode 6.2.1
+https://github.com/emacs-lsp/lsp-mode master
 https://github.com/emacs-lsp/lsp-ui master
 https://github.com/tigersoldier/company-lsp 2.1.0
 https://github.com/emacs-lsp/lsp-treemacs master
