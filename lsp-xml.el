@@ -197,9 +197,11 @@ Newlines and excess whitespace are removed."
   :package-version '(lsp-mode . "6.1"))
 
 (defun lsp-xml--create-connection ()
-  (lsp-stdio-connection
-   (lambda () lsp-xml-server-command)
-   (lambda () (f-exists? lsp-xml-jar-file))))
+  (plist-put
+   (lsp-stdio-connection
+    (lambda () lsp-xml-server-command))
+   :test? (lambda ()
+            (f-exists? lsp-xml-jar-file))))
 
 (lsp-register-client
  (make-lsp-client :new-connection (lsp-xml--create-connection)
