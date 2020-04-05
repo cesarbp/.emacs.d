@@ -18,11 +18,7 @@
 ;;; Code:
 
 (require 'ert)
-(require 'lsp-mode)
-
-(defgroup lsp-test nil
-  ""
-  :group 'lsp-mode)
+(require 'lsp)
 
 (ert-deftest lsp--path-to-uri ()
   (let ((lsp--uri-file-prefix "file:///"))
@@ -56,16 +52,14 @@
 (ert-deftest lsp-byte-compilation-test ()
   (seq-doseq (library (-filter
                        (lambda (file)
-                         (and (f-ext? file "el")
-                              (not (s-contains? "test" file))))
-                       (append (when (or load-file-name buffer-file-name)
-                                 (f-files (f-parent (f-dirname (or load-file-name buffer-file-name)))))
-                               (f-files default-directory))))
+                         (f-ext? file "el"))
+                       (f-files (f-parent (f-dirname (or load-file-name buffer-file-name))))))
     (let ((byte-compile-error-on-warn t))
-      (message "Testing file %s" library)
-      (should (byte-compile-file (save-excursion
-                                   (find-library library)
-                                   (buffer-file-name)))))))
+      (cl-assert (byte-compile-file (save-excursion
+                                      (find-library library)
+                                      (buffer-file-name)))
+                 t
+                 "Failed to byte-compile"))))
 
 (ert-deftest lsp--find-session-folder ()
   (cl-assert (string= "/folder/"
@@ -96,7 +90,6 @@
 (defcustom lsp-prop1 "10"
   "docs"
   :group 'lsp-python
-  :type 'string
   :risky t
   :type 'list)
 
@@ -124,8 +117,7 @@
 (defcustom lsp-prop3 nil
   "docs"
   :group 'lsp-python
-  :risky t
-  :type 'string)
+  :risky t)
 
 (lsp-register-custom-settings '(("section3.prop1" lsp-prop3 t)))
 

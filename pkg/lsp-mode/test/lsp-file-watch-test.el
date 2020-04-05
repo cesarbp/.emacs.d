@@ -22,7 +22,7 @@
 ;; Tests for file notifications functions.
 
 ;;; Code:
-(require 'lsp-mode)
+(require 'lsp)
 (require 'filenotify)
 (require 'em-glob)
 

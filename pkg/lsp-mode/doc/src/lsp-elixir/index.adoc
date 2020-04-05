@@ -1,5 +1,5 @@
 [id="lsp-elixir"]
-=== Elixir support: `lsp-elixir`
+=== Elixir support: `lsp-css`
 `lsp-elixir` provides support for Elixir using
 https://github.com/JakeBecker/elixir-ls[ElixirLS].
 

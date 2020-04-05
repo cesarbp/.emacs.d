@@ -18,8 +18,8 @@
 ;;; Code:
 
 (require 'ert)
-(require 'lsp-mode)
-(require 'cl-lib)
+(require 'lsp)
+(require 'cl)
 
 (defvar lsp--test-results nil)
 (defvar lsp--parser-function nil)
@@ -31,10 +31,9 @@
 (defun lsp--create-process-message ()
   (let ((fn (lsp--create-filter-function nil)))
     (lambda (input)
-      (cl-letf (((symbol-function 'lsp--parser-on-message) (lambda (_msg _workspace)))
-                ((symbol-function 'json-read-from-string)
-                 (lambda (msg)
-                   (push msg lsp--test-results))))
+      (flet ((lsp--parser-on-message (msg _workspace))
+             (json-read-from-string (msg)
+                                    (push msg lsp--test-results)))
         (funcall fn nil input)
         (prog1 lsp--test-results
           (setq lsp--test-results nil))))))

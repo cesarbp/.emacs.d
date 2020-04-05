@@ -161,22 +161,15 @@ styles."
    ("html.format.enable" lsp-html-format-enable t)
    ("html.experimental.customData" lsp-html-experimental-custom-data)))
 
-(defcustom lsp-html-server-command-args '("--stdio")
+(defcustom lsp-html-server-command '("html-languageserver" "--stdio")
   "Command to start html-languageserver."
   :type '(repeat string)
   :group 'lsp-html
-  :package-version '(lsp-mode . "6.3"))
-
-(lsp-dependency 'html-language-server
-                '(:system "html-languageserver")
-                '(:npm :package "vscode-html-languageserver-bin"
-                       :path "html-languageserver"))
+  :package-version '(lsp-mode . "6.1"))
 
 (lsp-register-client
  (make-lsp-client :new-connection (lsp-stdio-connection
-                                   (lambda ()
-                                     (cons (lsp-package-path 'html-language-server)
-                                           lsp-html-server-command-args)))
+                                   (lambda () lsp-html-server-command))
                   :major-modes '(html-mode sgml-mode mhtml-mode web-mode)
                   :priority -4
                   :completion-in-comments? t
@@ -184,11 +177,7 @@ styles."
                   :initialized-fn (lambda (w)
                                     (with-lsp-workspace w
                                       (lsp--set-configuration
-                                       (lsp-configuration-section "html"))))
-                  :download-server-fn (lambda (_client callback error-callback _update?)
-                                        (lsp-package-ensure
-                                         'html-language-server callback
-                                         error-callback))))
+                                       (lsp-configuration-section "html"))))))
 
 (provide 'lsp-html)
 ;;; lsp-html.el ends here
