@@ -65,27 +65,38 @@
 ;(add-to-list 'auto-mode-alist '("\\.tpl\\.php\\'" . web-mode))
 
 ;;; Python
-(eval-after-load 'elpy
-  '(progn (elpy-enable)
-          (setq python-shell-interpreter "ipython"
-                python-shell-interpreter-args "-i --simple-prompt")
-          (add-to-list 'python-shell-completion-native-disabled-interpreters
-                       "jupyter")
-          ;(require 'py-autopep8)
-          (add-hook 'elpy-mode-hook 'py-autopep8-enable-on-save)))
+;; (eval-after-load 'elpy
+;;   '(progn (elpy-enable)
+;;           (setq python-shell-interpreter "ipython"
+;;                 python-shell-interpreter-args "-i --simple-prompt")
+;;           (add-to-list 'python-shell-completion-native-disabled-interpreters
+;;                        "jupyter")
+;;           ;(require 'py-autopep8)
+;;           (add-hook 'elpy-mode-hook 'py-autopep8-enable-on-save)))
 ;; (setq python-shell-interpreter "python"
 ;;       python-shell-interpreter-args "-i"
 ;;       python-shell-prompt-detect-failure-warning nil)
 ;; (setq python-shell-interpreter "jupyter"
 ;;       python-shell-interpreter-args "console --simple-prompt"
 ;;       python-shell-prompt-detect-failure-warning nil)
+(add-hook 'python-mode-hook 'anaconda-mode)
+(add-hook 'python-mode-hook 'anaconda-eldoc-mode)
+
+;; (defun projectile-pyenv-mode-set ()
+;;   "Set pyenv version matching project name."
+;;   (let ((project (projectile-project-name)))
+;;     (if (member project (pyenv-mode-versions))
+;;         (pyenv-mode-set project)
+;;       (pyenv-mode-unset))))
+
+;; (add-hook 'projectile-after-switch-project-hook 'projectile-pyenv-mode-set)
 
 ;;; javascript
 
 (eval-after-load 'js2-mode
   '(progn (require 'js2-refactor)
-          (require 'xref-js2)  ; requires the silversearcher (ag)
-          ;(require 'indium)
+          (require 'xref-js2)       ; requires the silversearcher (ag)
+                                        ;(require 'indium)
           (js2r-add-keybindings-with-prefix "C-c C-r")
           (define-key js2-mode-map (kbd "C-k") #'js2r-kill)
           ;; js-mode (which js2 is based on) binds "M-." which conflicts with xref, so
