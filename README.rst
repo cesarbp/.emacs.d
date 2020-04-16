@@ -1,95 +1,169 @@
-.. |melpa| image:: https://melpa.org/packages/pyenv-mode-badge.svg
-    :target: https://melpa.org/#/pyenv-mode
+
+.. |melpa| image:: http://melpa.org/packages/pythonic-badge.svg
+    :target: http://melpa.org/#/pythonic
     :alt: Melpa
 
-==========
-Pyenv mode
-==========
+========
+Pythonic
+========
 
 |melpa|
 
-Integrate Fabián E. Gallina `python.el`_ with pyenv_ tool.  This allow
-packages which already use python.el (like python-django_) got pyenv
-virtual environments support out-of-the-box.
-
-Pyenv mode does...
-~~~~~~~~~~~~~~~~~~
-
-* Setup ``PYENV_VERSION`` environment variable and
-  ``python-shell-virtualenv-path`` custom variable based on user input
-
-Pyenv mode doesn't...
-~~~~~~~~~~~~~~~~~~~~~
-
-* Override your ``exec-path``
-* Run external shell scripts
-* Manage your pyenv installation
-* Deal with virtualenvwrapper
+Utility functions for writing pythonic emacs package.
 
 Installation
 ------------
 
-You can simply install package from Melpa_::
+You can install this package form Melpa_::
 
-    M-x package-install RET pyenv-mode
+    M-x package-install RET pythonic RET
 
 Usage
 -----
 
-Add following block to your emacs configuration
+This library provide function for convenient running python on
+different platforms on local and remote hosts including Docker
+containers.  To use ``pythonic`` with Docker you need to install
+`docker-tramp`_ Emacs package.
+
+You can use remote interpreter
 
 .. code:: lisp
 
-    (pyenv-mode)
+    (setq python-shell-interpreter "/ssh:user@host:/usr/bin/python")
+    ;; or
+    (setq python-shell-interpreter "/docker:root@container:/usr/bin/python")
 
-Now you are available to specify pyenv python version::
-
-    M-x pyenv-mode-set
-
-So now when you run inferior python with::
-
-    M-x run-python
-
-process will start inside specified python installation.  You can
-unset current version with::
-
-    M-x pyenv-mode-unset
-
-Goodies
--------
-
-When you set python version with ``pyenv-mode`` following changes
-happens automatically
-
-* compile commands use proper python version and environment
-* flycheck_ perform syntax checking according to python version you use
-* anaconda-mode_ search completions, definitions and references in chosen environment
-
-Projectile integration
-``````````````````````
-
-You can switch python version together with current project.  Drop
-following lines into emacs init file.  When use projectile switch
-project with ``C-c p p`` key binding ``pyenv-mode`` will activate
-environment matched project name.
+You can use remote virtual environment
 
 .. code:: lisp
 
-    (require 'pyenv-mode)
+    (setq python-shell-virtualenv-root "/ssh:user@host:env")
+    ;; or
+    (setq python-shell-virtualenv-root "/docker:root@container:/src/app/env")
 
-    (defun projectile-pyenv-mode-set ()
-      "Set pyenv version matching project name."
-      (let ((project (projectile-project-name)))
-        (if (member project (pyenv-mode-versions))
-            (pyenv-mode-set project)
-          (pyenv-mode-unset))))
+``python-shell-exec-path`` and ``python-shell-process-environment``
+will be translated to remote host too.
 
-    (add-hook 'projectile-after-switch-project-hook 'projectile-pyenv-mode-set)
+Functions
+---------
 
-.. _python.el: http://repo.or.cz/w/emacs.git/blob_plain/master:/lisp/progmodes/python.el
-.. _pyenv: https://github.com/yyuu/pyenv
-.. _python-django: https://github.com/fgallina/python-django.el
-.. _Melpa: https://melpa.org
-.. _flycheck: https://github.com/flycheck/flycheck
-.. _anaconda-mode: https://github.com/proofit404/anaconda-mode
-.. _projectile: https://github.com/bbatsov/projectile
+call-pythonic
+~~~~~~~~~~~~~
+
+Pythonic wrapper around ``call-process``.
+
+FILE is the input file.  BUFFER is the output destination.  DISPLAY
+specifies to redisplay BUFFER on new output.  ARGS is the list of
+arguments passed to ``call-process``.  CWD will be working directory
+for running process.
+
+.. code:: lisp
+
+    (call-pythonic :buffer "*Pythonic*"
+                   :args '("-V")
+                   :cwd "~")
+
+start-pythonic
+~~~~~~~~~~~~~~
+
+Pythonic wrapper around ``start-process``.
+
+PROCESS is a name of the created process.  BUFFER is a output
+destination. ARGS are the list of args passed to ``start-process``.
+CWD will be working directory for running process.  FILTER must be a
+symbol of process filter function if necessary.  SENTINEL must be a
+symbol of process sentinel function if necessary.  QUERY-ON-EXIT will
+be corresponding process flag.
+
+.. code:: lisp
+
+    (start-pythonic :process "pythonic"
+                    :buffer "*Pythonic*"
+                    :args '("-c" "print('PING')")
+                    :cwd "~"
+                    :filter (lambda (process output) (message output))
+                    :sentinel (lambda (process event) (message "Done."))
+                    :query-on-exit nil)
+
+pythonic-proper-environment-p
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Determine if python environment has been changed since PROCESS was started.
+
+.. code:: lisp
+
+    (pythonic-proper-environment-p
+     (start-pythonic
+      :process "pythonic"
+      :args '("-V")))
+
+pythonic-remote-p
+~~~~~~~~~~~~~~~~~
+
+Determine remote or local virtual environment.
+
+.. code:: lisp
+
+    (pythonic-remote-p)
+
+pythonic-remote-docker-p
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Determine docker remote virtual environment.
+
+.. code:: lisp
+
+    (pythonic-remote-docker-p)
+
+pythonic-remote-vagrant-p
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Determine vagrant remote virtual environment.
+
+.. code:: lisp
+
+    (pythonic-remote-vagrant-p)
+
+pythonic-remote-user
+~~~~~~~~~~~~~~~~~~~~
+
+Get user of the connection to the remote python interpreter.
+
+.. code:: lisp
+
+    (pythonic-remote-user)
+
+pythonic-remote-host
+~~~~~~~~~~~~~~~~~~~~
+
+Get host of the connection to the remote python interpreter.
+
+.. code:: lisp
+
+    (pythonic-remote-host)
+
+pythonic-remote-port
+~~~~~~~~~~~~~~~~~~~~
+
+Get port of the connection to the remote python interpreter.
+
+.. code:: lisp
+
+    (pythonic-remote-port)
+
+Commands
+--------
+
+pythonic-activate
+~~~~~~~~~~~~~~~~~
+
+Activate python virtual environment.  Tramp paths are supported.
+
+pythonic-deactivate
+~~~~~~~~~~~~~~~~~~~
+
+Deactivate python virtual environment.
+
+.. _Melpa: http://melpa.org
+.. _docker-tramp: https://github.com/emacs-pe/docker-tramp.el
