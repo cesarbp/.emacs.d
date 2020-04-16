@@ -79,7 +79,7 @@
 ;; (setq python-shell-interpreter "jupyter"
 ;;       python-shell-interpreter-args "console --simple-prompt"
 ;;       python-shell-prompt-detect-failure-warning nil)
-(when when (string-equal system-type "darwin")
+(when (string-equal system-type "darwin")
       (setq python-shell-interpreter "python3"))
 (add-hook 'python-mode-hook 'anaconda-mode)
 (add-hook 'python-mode-hook 'anaconda-eldoc-mode)
