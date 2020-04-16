@@ -1,6 +1,6 @@
 ;;; pyenv-mode.el --- Integrate pyenv with python-mode
 
-;; Copyright (C) 2014-2015 by Artem Malyshev
+;; Copyright (C) 2014-2016 by Artem Malyshev
 
 ;; Author: Artem Malyshev <proofit404@gmail.com>
 ;; URL: https://github.com/proofit404/pyenv-mode
@@ -28,7 +28,7 @@
 
 (require 'pythonic)
 
-(defgroup pyenv-mode nil
+(defgroup pyenv nil
   "Pyenv virtualenv integration with python mode."
   :group 'languages)
 
@@ -37,7 +37,7 @@
     (when (pyenv-mode-version)
       (concat "Pyenv:" (pyenv-mode-version) " ")))
   "How `pyenv-mode' will indicate the current python version in the mode line."
-  :group 'pyenv-mode)
+  :group 'pyenv)
 
 (defun pyenv-mode-version ()
   "Return currently active pyenv version."
