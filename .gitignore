@@ -19,3 +19,4 @@ url/
 .cache/
 .lsp-session*
 pkg/subtrees-e
+anaconda-mode/
