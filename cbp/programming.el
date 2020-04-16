@@ -90,6 +90,9 @@
       (pyenv-mode-unset))))
 
 (add-hook 'projectile-after-switch-project-hook 'projectile-pyenv-mode-set)
+(add-hook 'python-mode-hook 'yapf-mode)
+(setq pylookup-search-options '("--insensitive" "0" "--desc" "0"))
+
 
 ;; (defun projectile-pyenv-mode-set ()
 ;;   "Set pyenv version matching project name."
