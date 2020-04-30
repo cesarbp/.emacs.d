@@ -83,6 +83,7 @@
       (setq python-shell-interpreter "python3"))
 (add-hook 'python-mode-hook 'anaconda-mode)
 (add-hook 'python-mode-hook 'anaconda-eldoc-mode)
+(add-hook 'python-mode-hook 'flycheck-mode)
 
 (defun add-company-python ()
   (when (boundp 'company-backends)
