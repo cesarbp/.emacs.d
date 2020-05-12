@@ -86,6 +86,8 @@
 (add-hook 'python-mode-hook 'flycheck-mode)
 (setq python-shell-interpreter "ipython"
       python-shell-interpreter-args "--simple-prompt -i")
+(add-hook 'inferior-python-mode-hook
+          (lambda () (setq-local scroll-conservatively 101)))
 
 (defun add-company-python ()
   (when (boundp 'company-backends)
