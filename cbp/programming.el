@@ -7,6 +7,12 @@
 (add-hook 'prog-mode-hook 'rainbow-delimiters-mode)
 ;(add-hook 'prog-mode-hook 'highlight-parentheses-mode)
 
+
+;;; Company
+
+(setq company-minimum-prefix-length 2
+      company-idle-delay 0.3)
+
 ;;; SmartParens
 (defun smartparens-non-lisp ()
   (when (not (member major-mode '(emacs-lisp-mode)))
@@ -179,6 +185,4 @@
 (define-key rust-mode-map (kbd "C-c C-c") 'rust-run)
 (add-hook 'rust-mode-hook #'lsp)
 (setq lsp-keymap-prefix "s-l"
-      lsp-rust-server 'rust-analyzer
-      company-minimum-prefix-length 1
-      company-idle-delay 0.0)
+      lsp-rust-server 'rust-analyzer)
