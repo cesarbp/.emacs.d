@@ -4,7 +4,8 @@
 
 ;; Author: Sebastien Chapuis <sebastien@chapu.is>
 ;; URL: https://github.com/emacs-lsp/lsp-ui
-;; Keywords: lsp, ui
+;; Keywords: languages, tools
+;; Version: 6.2
 
 ;;; License
 ;;
@@ -29,6 +30,7 @@
 
 ;;; Code:
 
+(require 'lsp-protocol)
 (require 'lsp-mode)
 (require 'flycheck nil 'noerror)
 (require 'dash)
@@ -219,20 +221,20 @@ We prioritize string with a language (which is probably a type or a
 function signature)."
   (when contents
     (cond
-     ((stringp contents) contents)
-     ((sequencep contents) ;; MarkedString[]
-      (seq-find (lambda (it) (and (hash-table-p it)
-                                  (lsp-get-renderer (gethash "language" it))))
+     ((lsp-marked-string? contents) contents)
+     ((vectorp contents)
+      (seq-find (lambda (it) (and (lsp-marked-string? it)
+                                  (lsp-get-renderer (lsp:marked-string-language it))))
                 contents))
-     ((gethash "kind" contents) contents) ;; MarkupContent
-     ((gethash "language" contents) contents))))
+     ((lsp-markup-content? contents) contents))))
+
 
 (defun lsp-ui-sideline--format-info (marked-string)
   "Format MARKED-STRING.
 If the string has a language, we fontify it with the function provided
 by `lsp-mode'.
 MARKED-STRING is the string returned by `lsp-ui-sideline--extract-info'."
-  (when (and marked-string (hash-table-p marked-string))
+  (when (and marked-string (or (lsp-marked-string? marked-string) (lsp-markup-content? marked-string)))
     (setq marked-string (lsp--render-element marked-string))
     (add-face-text-property 0 (length marked-string) 'lsp-ui-sideline-symbol-info nil marked-string)
     (add-face-text-property 0 (length marked-string) 'default t marked-string)
@@ -256,7 +258,7 @@ CURRENT is non-nil when the point is on the symbol."
     (add-face-text-property 0 len 'lsp-ui-sideline-global nil str)
     (concat
      (propertize " " 'display `(space :align-to (- right-fringe ,(lsp-ui-sideline--align len margin))))
-     str)))
+     (propertize str 'display '(height 1)))))
 
 (defun lsp-ui-sideline--check-duplicate (symbol info)
   "Check if there's already a SYMBOL containing INFO, unless `lsp-ui-sideline-ignore-duplicate'
@@ -291,7 +293,7 @@ is set to t."
 (defun lsp-ui-sideline--push-info (symbol tag bounds info bol eol)
   (when (and (= tag (lsp-ui-sideline--calculate-tag))
              (not (lsp-ui-sideline--stop-p)))
-    (let* ((info (concat (-some->> (gethash "contents" info)
+    (let* ((info (concat (-some->> (lsp:hover-contents info)
                            lsp-ui-sideline--extract-info
                            lsp-ui-sideline--format-info
                            (replace-regexp-in-string "\r" ""))))
@@ -365,7 +367,7 @@ Push sideline overlays on `lsp-ui-sideline--ovs'."
                                  (add-face-text-property 0 len face nil message)
                                  message))
                  (string (concat (propertize " " 'display `(space :align-to (- right-fringe ,(lsp-ui-sideline--align len margin))))
-                                 message))
+                                 (propertize message 'display '(height 1))))
                  (pos-ov (lsp-ui-sideline--find-line len bol eol nil offset))
                  (ov (and pos-ov (make-overlay (car pos-ov) (car pos-ov)))))
             (when pos-ov
@@ -384,9 +386,9 @@ Push sideline overlays on `lsp-ui-sideline--ovs'."
 (defun lsp-ui-sideline--code-actions (actions bol eol)
   "Show code ACTIONS."
   (when lsp-ui-sideline-actions-kind-regex
-    (setq actions (seq-filter (-lambda ((&hash "kind"))
-                                (or (not kind)
-                                    (s-match lsp-ui-sideline-actions-kind-regex kind)))
+    (setq actions (seq-filter (-lambda ((&CodeAction :kind?))
+                                (or (not kind?)
+                                    (s-match lsp-ui-sideline-actions-kind-regex kind?)))
                               actions)))
   (setq lsp-ui-sideline--code-actions actions)
   (dolist (ov lsp-ui-sideline--ovs)
@@ -395,7 +397,7 @@ Push sideline overlays on `lsp-ui-sideline--ovs'."
             (delq (overlay-get ov 'position) lsp-ui-sideline--occupied-lines))
       (delete-overlay ov)))
   (seq-doseq (action actions)
-    (-let* ((title (->> (gethash "title" action)
+    (-let* ((title (->> (lsp:code-action-title action)
                         (replace-regexp-in-string "[\n\t ]+" " ")
                         (concat lsp-ui-sideline-code-actions-prefix)))
             (margin (lsp-ui-sideline--margin-width))
@@ -410,7 +412,7 @@ Push sideline overlays on `lsp-ui-sideline--ovs'."
                           (add-text-properties 0 len `(keymap ,keymap mouse-face highlight) title)
                           title))
             (string (concat (propertize " " 'display `(space :align-to (- right-fringe ,(lsp-ui-sideline--align len margin))))
-                            title))
+                            (propertize title 'display '(height 1))))
             (pos-ov (lsp-ui-sideline--find-line (1+ (length title)) bol eol t))
             (ov (and pos-ov (make-overlay (car pos-ov) (car pos-ov)))))
       (when pos-ov
@@ -472,7 +474,7 @@ from the language server."
                      (outside-comment (eq (nth 4 parsing-state) nil)))
                 ;; Skip strings and comments
                 (when (and symbol (not in-string) outside-comment)
-                  (push (list symbol tag bounds (lsp--position (1- line-widen) (- (point) bol))) symbols))))
+                  (push (list symbol tag bounds (list :line (1- line-widen) :character (- (point) bol))) symbols))))
             (seq-do #'lsp--cancel-request lsp-ui-sideline--requests)
             (dolist (ov lsp-ui-sideline--ovs)
               (when (eq (overlay-get ov 'kind) 'info)
@@ -484,7 +486,8 @@ from the language server."
                             (-let (((symbol tag bounds position) it))
                               (plist-get (lsp-request-async
                                           "textDocument/hover"
-                                          (list :textDocument doc-id :position position)
+                                          (lsp-make-hover-params :text-document doc-id
+                                                                 :position position)
                                           (lambda (info)
                                             (when info (lsp-ui-sideline--push-info symbol tag bounds info bol eol)))
                                           :mode 'alive)
@@ -557,7 +560,7 @@ This does not toggle display of flycheck diagnostics or code actions."
    (lsp-ui-sideline-mode
     (add-hook 'post-command-hook 'lsp-ui-sideline nil t)
     (advice-add 'company-pseudo-tooltip-frontend :before 'lsp-ui-sideline--hide-before-company)
-    (add-hook 'lsp-after-diagnostics-hook 'lsp-ui-sideline--diagnostics-changed nil t)
+    (add-hook 'flycheck-after-syntax-check-hook 'lsp-ui-sideline--diagnostics-changed nil t)
     (dolist (cmd lsp-ui-sideline-cmd-erase)
       (advice-add cmd :before 'lsp-ui-sideline--erase))
     (when lsp-ui-sideline-show-diagnostics
@@ -566,7 +569,7 @@ This does not toggle display of flycheck diagnostics or code actions."
     (setq lsp-ui-sideline--tag nil)
     (advice-remove 'company-pseudo-tooltip-frontend 'lsp-ui-sideline--hide-before-company)
     (lsp-ui-sideline--delete-ov)
-    (remove-hook 'lsp-after-diagnostics-hook 'lsp-ui-sideline--diagnostics-changed t)
+    (remove-hook 'flycheck-after-syntax-check-hook  'lsp-ui-sideline--diagnostics-changed t)
     (remove-hook 'post-command-hook 'lsp-ui-sideline t)
     (dolist (cmd lsp-ui-sideline-cmd-erase)
       (advice-remove cmd 'lsp-ui-sideline--erase))
