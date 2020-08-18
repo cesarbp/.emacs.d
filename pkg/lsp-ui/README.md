@@ -1,8 +1,9 @@
-# lsp-ui
+lsp-ui
+======
 
 [![MELPA](https://melpa.org/packages/lsp-ui-badge.svg)](https://melpa.org/#/lsp-ui)
-[![Join the chat](https://badges.gitter.im/emacs-lsp/lsp-ui.svg)](https://gitter.im/emacs-lsp/lsp-ui)
-[![Build Status](https://travis-ci.com/emacs-lsp/lsp-ui.svg?branch=master)](https://travis-ci.com/emacs-lsp/lsp-ui)
+[![](https://badges.gitter.im/emacs-lsp/lsp-mode.svg)](https://gitter.im/emacs-lsp/lsp-mode)
+[![Build Status](https://github.com/emacs-lsp/lsp-ui/workflows/CI/badge.svg?branch=master)](https://github.com/emacs-lsp/lsp-ui/actions)
 
 <!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-refresh-toc -->
 **Table of Contents**

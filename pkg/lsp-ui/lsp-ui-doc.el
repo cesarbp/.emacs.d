@@ -4,7 +4,8 @@
 
 ;; Author: Sebastien Chapuis <sebastien@chapu.is>
 ;; URL: https://github.com/emacs-lsp/lsp-ui
-;; Keywords: lsp, ui
+;; Keywords: languagues, tools
+;; Version: 6.2
 
 ;;; License
 ;;
@@ -29,6 +30,7 @@
 
 ;;; Code:
 
+(require 'lsp-protocol)
 (require 'lsp-mode)
 (require 'dash)
 (require 'dash-functional)
@@ -38,6 +40,15 @@
 
 (when (featurep 'xwidget-internal)
   (require 'xwidget))
+
+(declare-function make-xwidget "ext:xwidget" (type title width height arguments &optional buffer))
+(declare-function set-xwidget-query-on-exit-flag "ext:xwidget")
+(declare-function xwidget-webkit-mode "ext:xwidget")
+(declare-function xwidget-webkit-goto-uri "ext:xwidget" (xwidget uri))
+(declare-function xwidget-at "ext:xwidget" (pos))
+(declare-function xwidget-webkit-execute-script "ext:xwidget" (xwidget script &optional callback))
+(declare-function xwidget-webkit-execute-script-rv "ext:xwidget" (xwidget script &optional default))
+(declare-function xwidget-resize "ext:xwidget" (xwidget new-width new-height))
 
 (defgroup lsp-ui-doc nil
   "Display informations of the current line."
@@ -251,9 +262,11 @@ Because some variables are buffer local.")
   (string-trim-right
    (let* ((string (if (stringp marked-string)
                       marked-string
-                    (gethash "value" marked-string)))
-          (with-lang (hash-table-p marked-string))
-          (language (or (and with-lang (or (gethash "language" marked-string) (gethash "kind" marked-string)))
+                    (lsp:markup-content-value marked-string)))
+          (with-lang (lsp-marked-string? marked-string))
+          (language (or (and with-lang
+                             (or (lsp:marked-string-language marked-string)
+                                 (lsp:markup-content-kind marked-string)))
                         language)))
      (cond
       (lsp-ui-doc-use-webkit
@@ -263,8 +276,8 @@ Because some variables are buffer local.")
       (t (lsp--render-element (lsp-ui-doc--inline-formatted-string string)))))))
 
 (defun lsp-ui-doc--filter-marked-string (list-marked-string)
-  (let ((groups (--separate (and (hash-table-p it)
-                                 (lsp-get-renderer (gethash "language" it)))
+  (let ((groups (--separate (and (lsp-marked-string? it)
+                                 (lsp-get-renderer (lsp:marked-string-language it)))
                             (append list-marked-string nil))))
     (if lsp-ui-doc-include-signature
         list-marked-string
@@ -276,20 +289,28 @@ CONTENTS can be differents type of values:
 MarkedString | MarkedString[] | MarkupContent (as defined in the LSP).
 We don't extract the string that `lps-line' is already displaying."
   (cond
-   ((stringp contents) (lsp-ui-doc--extract-marked-string contents)) ;; MarkedString
-   ((sequencep contents) ;; MarkedString[]
+   ((vectorp contents) ;; MarkedString[]
     (mapconcat 'lsp-ui-doc--extract-marked-string
                (lsp-ui-doc--filter-marked-string (seq-filter #'identity contents))
                "\n\n"
                ;; (propertize "\n\n" 'face '(:height 0.4))
                ))
    ;; when we get markdown contents, render using emacs gfm-view-mode / markdown-mode
-   ((string= (gethash "kind" contents) "markdown") ;; Markdown MarkupContent
-    (lsp-ui-doc--extract-marked-string (gethash "value" contents) "markdown"))
-   ((gethash "kind" contents) (gethash "value" contents)) ;; Plaintext MarkupContent
-   ((gethash "language" contents) ;; MarkedString
-    (lsp-ui-doc--extract-marked-string (gethash "value" contents)
-                                       (gethash "language" contents)))))
+   ((and (lsp-marked-string? contents)
+         (lsp:marked-string-language contents))
+    (lsp-ui-doc--extract-marked-string (lsp:marked-string-value contents)
+                                       (lsp:marked-string-language contents)))
+   ;; The specification for MarkedString also includes raw strings of
+   ;; markdown, which is not reflected by `lsp-marked-string?'
+   ((stringp contents)
+    (lsp-ui-doc--extract-marked-string contents lsp/markup-kind-markdown))
+   ((lsp-marked-string? contents) (lsp-ui-doc--extract-marked-string contents))
+   ((and (lsp-markup-content? contents)
+         (string= (lsp:markup-content-kind contents) lsp/markup-kind-markdown))
+    (lsp-ui-doc--extract-marked-string (lsp:markup-content-value contents) lsp/markup-kind-markdown))
+   ((and (lsp-markup-content? contents)
+         (string= (lsp:markup-content-kind contents) lsp/markup-kind-plain-text))
+    (lsp:markup-content-value contents))))
 
 (defun lsp-ui-doc--webkit-run-xwidget ()
   "Launch embedded WebKit instance."
@@ -690,7 +711,7 @@ HEIGHT is the documentation number of lines."
                         :cancel-token :lsp-ui-doc-hover)))))))
       (lsp-ui-doc--hide-frame))))
 
-(defun lsp-ui-doc--callback (hover bounds buffer)
+(lsp-defun lsp-ui-doc--callback ((hover &as &Hover? :contents) bounds buffer)
   "Process the received documentation.
 HOVER is the doc returned by the LS.
 BOUNDS are points of the symbol that have been requested.
@@ -702,7 +723,7 @@ BUFFER is the buffer where the request has been made."
         (setq lsp-ui-doc--bounds bounds)
         (lsp-ui-doc--display
          (thing-at-point 'symbol t)
-         (-some->> (gethash "contents" hover)
+         (-some->> contents
            lsp-ui-doc--extract
            (replace-regexp-in-string "\r" ""))))
     (lsp-ui-doc--hide-frame)))
@@ -719,7 +740,7 @@ BUFFER is the buffer where the request has been made."
       (and (lsp-ui-doc--get-frame)
            (frame-visible-p (lsp-ui-doc--get-frame)))))
 
-(defun lsp-ui--hide-doc-frame-on-window-change (fun window &optional no-record)
+(defun lsp-ui-doc-hide-frame-on-window-change (fun window &optional no-record)
   "Delete the child frame if currently selected window changes.
 Does nothing if the newly-selected window is the same window as
 before, or if the new window is the minibuffer."
@@ -735,7 +756,7 @@ before, or if the new window is the minibuffer."
                              (equal (window-buffer initial-window) doc-buffer)))
               (lsp-ui-doc--hide-frame))))))))
 
-(advice-add #'select-window :around #'lsp-ui--hide-doc-frame-on-window-change)
+(advice-add #'select-window :around #'lsp-ui-doc-hide-frame-on-window-change)
 
 (advice-add 'load-theme :before (lambda (&rest _) (lsp-ui-doc--delete-frame)))
 (add-hook 'window-configuration-change-hook #'lsp-ui-doc--hide-frame)

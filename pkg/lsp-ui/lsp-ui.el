@@ -1,13 +1,13 @@
-;;; lsp-ui.el --- UI modules for lsp-mode            -*- lexical-binding: t; -*-
+;;; lsp-ui.el --- UI modules for lsp-mode -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2017 Tobias Pisani
 ;; Copyright (C) 2018 Sebastien Chapuis, Fangrui Song
 
 ;; Author: Sebastien Chapuis <sebastien@chapu.is>, Fangrui Song <i@maskray.me>
-;; Keywords: lsp
+;; Keywords: languages, tools
 ;; URL: https://github.com/emacs-lsp/lsp-ui
-;; Package-Requires: ((emacs "25.1") (dash "2.14") (dash-functional "1.2.0") (lsp-mode "6.0") (markdown-mode "2.3"))
-;; Version: 6.2
+;; Package-Requires: ((emacs "26.1") (dash "2.14") (dash-functional "1.2.0") (lsp-mode "6.0") (markdown-mode "2.3"))
+;; Version: 7.0.1
 
 ;;; License
 ;;
@@ -33,18 +33,20 @@
 
 ;;; Code:
 
+(require 'dash)
+(require 'lsp-protocol)
+
+(require 'lsp-ui-sideline)
+(require 'lsp-ui-peek)
+(require 'lsp-ui-imenu)
+(require 'lsp-ui-doc)
+
 (defgroup lsp-ui nil
   "‘lsp-ui’ contains a series of useful UI integrations for ‘lsp-mode’."
   :group 'tools
   :group 'convenience
   :link '(custom-manual "(lsp-ui) Top")
   :link '(info-link "(lsp-ui) Customizing"))
-
-(require 'lsp-ui-sideline)
-(require 'lsp-ui-peek)
-(require 'lsp-ui-imenu)
-(require 'lsp-ui-doc)
-(require 'dash)
 
 (with-eval-after-load 'flycheck
   (require 'lsp-ui-flycheck))
@@ -119,15 +121,13 @@ Both should have the form (FILENAME LINE COLUMN)."
       (< (caddr x) (caddr y)))))
 
 (defun lsp-ui--reference-triples (extra)
-  "Return references as a list of (FILENAME LINE COLUMN) triples."
+  "Return references as a list of (FILENAME LINE COLUMN) triples given EXTRA."
   (let ((refs (lsp-request "textDocument/references"
                            (append (lsp--text-document-position-params) extra))))
     (sort
      (mapcar
-      (lambda (ref)
-        (-let* (((&hash "uri" uri "range" range) ref)
-                ((&hash "line" line "character" col) (gethash "start" range)))
-          (list (lsp--uri-to-path uri) line col)))
+      (-lambda ((&Location :uri :range (&Range :start (&Position :line :character))))
+        (list (lsp--uri-to-path uri) line character))
       refs)
      #'lsp-ui--location<)))
 
@@ -135,7 +135,7 @@ Both should have the form (FILENAME LINE COLUMN)."
 (defun lsp-ui-find-next-reference (&optional extra)
   "Find next reference of the symbol at point."
   (interactive)
-  (let* ((cur (list buffer-file-name (lsp--cur-line) (lsp--cur-column)))
+  (let* ((cur (list buffer-file-name (1- (line-number-at-pos)) (- (point) (line-beginning-position))))
          (refs (lsp-ui--reference-triples extra))
          (idx -1)
          (res (-first (lambda (ref) (cl-incf idx) (lsp-ui--location< cur ref)) refs)))
@@ -152,7 +152,7 @@ Both should have the form (FILENAME LINE COLUMN)."
 (defun lsp-ui-find-prev-reference (&optional extra)
   "Find previous reference of the symbol at point."
   (interactive)
-  (let* ((cur (list buffer-file-name (lsp--cur-line) (lsp--cur-column)))
+  (let* ((cur (list buffer-file-name (1- (line-number-at-pos)) (- (point) (line-beginning-position))))
          (refs (lsp-ui--reference-triples extra))
          (idx -1)
          (res (-last (lambda (ref) (and (lsp-ui--location< ref cur) (cl-incf idx))) refs)))
