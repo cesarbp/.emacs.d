@@ -39,11 +39,11 @@
   :type 'file)
 
 (defcustom lsp-erlang-server-connection-type
-  'tcp
+  'stdio
   "Type of connection to use with the Erlang Language Server: tcp or stdio"
   :group 'lsp-erlang
   :risky t
-  :type 'string)
+  :type 'symbol)
 
 (defun lsp-erlang-server-start-fun (port)
   `(,lsp-erlang-server-path

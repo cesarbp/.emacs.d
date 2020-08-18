@@ -192,7 +192,7 @@ public class Temp {
       String s = \"SomeString\";
   }
 }")
-          (expected "package test;
+         (expected "package test;
 
 public class Temp {
   public void name() {
@@ -205,11 +205,8 @@ private void extracted() {
 }")
          (actual (with-temp-buffer
                    (insert input)
-                   (lsp--apply-text-edits (let ((json-encoding-pretty-print t)
-                                                (json-array-type 'list)
-                                                (json-object-type 'hash-table)
-                                                (json-false nil))
-                                            (json-read-from-string lsp-methods-test--changes)))
+                   (lsp--apply-text-edits
+                    (lsp--read-json lsp-methods-test--changes))
                    (buffer-string))))
     (should (string= actual expected))))
 
@@ -217,33 +214,47 @@ private void extracted() {
   (let ((new-file-name (make-temp-file "new")))
     (delete-file new-file-name)
     (lsp--apply-workspace-edit
-     (ht ("documentChanges"
-          (list (ht ("uri"  (lsp--path-to-uri new-file-name))
-                    ("kind" "create"))))))
+     (lsp-make-workspace-edit
+      :document-changes?
+      `[,(lsp-make-create-file :uri (lsp--path-to-uri new-file-name)
+                               :kind "create")]))
     (should (f-exists? new-file-name)))
   (let ((new-file-name (make-temp-file "should be overridden")))
     (f-write-text "should be overridden" nil new-file-name)
     (lsp--apply-workspace-edit
-     (ht ("documentChanges"
-          (list (ht ("uri"  (lsp--path-to-uri new-file-name))
-                    ("kind" "create")
-                    ("options" (ht ("override" t))))))))
+     (lsp-make-workspace-edit
+      :document-changes?
+      `[,(lsp-make-create-file :uri (lsp--path-to-uri new-file-name)
+                               :kind "create"
+                               :options? (lsp-make-create-file-options :overwrite? t))]))
     (should (equal (f-read-text new-file-name) "")))
   (let ((new-file-name (make-temp-file "should not be overridden")))
     (f-write-text "text" nil new-file-name)
     (lsp--apply-workspace-edit
-     (ht ("documentChanges"
-          (list (ht ("uri"  (lsp--path-to-uri new-file-name))
-                    ("kind" "create")
-                    ("options" (ht ("override" nil))))))))
-    (should (equal (f-read-text new-file-name) "text"))))
+     (lsp-make-workspace-edit
+      :document-changes?
+      `[,(lsp-make-create-file :uri (lsp--path-to-uri new-file-name)
+                               :kind "create"
+                               :options? (lsp-make-create-file-options :overwrite? nil))]))
+    (should (equal (f-read-text new-file-name) "text")))
+  ;; nested file without parent dir
+  (let ((new-file-name (make-temp-file "new")))
+    (delete-file new-file-name)
+    (setq new-file-name (f-join new-file-name "nested"))
+    (lsp--apply-workspace-edit
+     (lsp-make-workspace-edit
+      :document-changes?
+      `[,(lsp-make-create-file :uri (lsp--path-to-uri new-file-name)
+                               :kind "create")]))
+    (should (f-exists? new-file-name))))
 
 (ert-deftest lsp-delete-test ()
   (let ((delete-file-name (make-temp-file "to-delete")))
     (lsp--apply-workspace-edit
-     (ht ("documentChanges"
-          (list (ht ("uri"  (lsp--path-to-uri delete-file-name))
-                    ("kind" "delete"))))))
+     (lsp-make-workspace-edit
+      :document-changes?
+      `[,(lsp-make-delete-file :uri (lsp--path-to-uri delete-file-name)
+                               :kind "delete")]))
     (should-not (f-exists? delete-file-name))))
 
 (ert-deftest lsp-update-test ()
@@ -253,10 +264,11 @@ private void extracted() {
     (f-delete new-file-name)
 
     (lsp--apply-workspace-edit
-     (ht ("documentChanges"
-          (list (ht ("oldUri"  (lsp--path-to-uri old-file-name))
-                    ("newUri"  (lsp--path-to-uri new-file-name))
-                    ("kind" "rename"))))))
+     (lsp-make-workspace-edit
+      :document-changes?
+      `[,(lsp-make-rename-file :old-uri (lsp--path-to-uri old-file-name)
+                               :new-uri (lsp--path-to-uri new-file-name)
+                               :kind "rename")]))
     (should-not (f-exists? old-file-name))
     (should (f-exists? new-file-name)))
 
@@ -267,10 +279,26 @@ private void extracted() {
     (f-write-text "should be overridden" nil new-file-name)
 
     (lsp--apply-workspace-edit
-     (ht ("documentChanges"
-          (list (ht ("oldUri"  (lsp--path-to-uri old-file-name))
-                    ("newUri"  (lsp--path-to-uri new-file-name))
-                    ("kind" "rename")
-                    ("options" (ht ("override" t))))))))
+     (lsp-make-workspace-edit
+      :document-changes?
+      `[,(lsp-make-rename-file :old-uri (lsp--path-to-uri old-file-name)
+                               :new-uri (lsp--path-to-uri new-file-name)
+                               :kind "rename"
+                               :options? (lsp-make-rename-file-options :overwrite? t))]))
+    (should-not (f-exists? old-file-name))
+    (should (f-exists? new-file-name)))
+
+  ;; nested directory
+  (let* ((old-file-name (make-temp-file "old-"))
+         (new-file-name (make-temp-file "new-"))
+         (_ (delete-file new-file-name))
+         (new-file-name (f-join new-file-name "nested" "nested2")))
+
+    (lsp--apply-workspace-edit
+     (lsp-make-workspace-edit
+      :document-changes?
+      `[,(lsp-make-rename-file :old-uri (lsp--path-to-uri old-file-name)
+                               :new-uri (lsp--path-to-uri new-file-name)
+                               :kind "rename")]))
     (should-not (f-exists? old-file-name))
     (should (f-exists? new-file-name))))

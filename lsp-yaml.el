@@ -52,7 +52,7 @@
 
 (defcustom lsp-yaml-prose-wrap "preserve"
   "Options for prose-wrap.
-   Always: wrap prose if it exeeds the print width.
+   Always: wrap prose if it exceeds the print width.
    Never: never wrap the prose.
    Preserve: wrap prose as-is."
   :type '(choice
@@ -86,9 +86,9 @@
   :group 'lsp-yaml
   :package-version '(lsp-mode . "6.2"))
 
-(defcustom lsp-yaml-schemas (make-hash-table)
+(defcustom lsp-yaml-schemas '()
   "Associate schemas to YAML files in a glob pattern."
-  :type '(restricted-sexp :match-alternatives (hash-table-p))
+  :type '(alist :key-type (string :tag "schema") :value-type (string :tag "files (glob)"))
   :group 'lsp-yaml
   :package-version '(lsp-mode . "6.2"))
 
@@ -137,7 +137,3 @@
 
 (provide 'lsp-yaml)
 ;;; lsp-yaml.el ends here
-
-;; Local Variables:
-;; flycheck-disabled-checkers: (emacs-lisp-checkdoc)
-;; End:
