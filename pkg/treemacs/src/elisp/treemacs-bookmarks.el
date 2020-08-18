@@ -26,10 +26,13 @@
 (require 'treemacs-follow-mode)
 (require 'treemacs-interface)
 (require 'treemacs-scope)
+(require 'treemacs-logging)
 (require 'treemacs-tags)
-(eval-and-compile
-  (require 'treemacs-macros))
 (require 'treemacs-workspaces)
+
+(eval-when-compile
+  (require 'cl-lib)
+  (require 'treemacs-macros))
 
 (treemacs-import-functions-from "treemacs"
   treemacs-select-window)
@@ -175,8 +178,8 @@ This function is installed as the `bookmark-make-record-function'."
 ;;;###autoload
 (defun treemacs-add-bookmark ()
   "Add the current node to Emacs' list of bookmarks.
-For file and directory nodes their absolute path is saved. Tag nodes
-additionally also save the tag's position. A tag can only be bookmarked if the
+For file and directory nodes their absolute path is saved.  Tag nodes
+additionally also save the tag's position.  A tag can only be bookmarked if the
 treemacs node is pointing to a valid buffer position."
   (interactive)
   (treemacs-with-current-button
@@ -193,7 +196,7 @@ treemacs node is pointing to a valid buffer position."
              `((filename . ,(buffer-file-name tag-buffer))
                (position . ,tag-pos))
              nil)
-          (treemacs-log "Tag info can not be saved because it is not pointing to a live buffer."))))
+          (treemacs-log-failure "Tag info can not be saved because it is not pointing to a live buffer."))))
      ((or 'tag-node-open 'tag-node-closed)
       (treemacs-pulse-on-failure "There is nothing to bookmark here.")))))
 

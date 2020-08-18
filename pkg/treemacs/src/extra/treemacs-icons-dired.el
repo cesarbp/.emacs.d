@@ -3,7 +3,7 @@
 ;; Copyright (C) 2020 Alexander Miller
 
 ;; Author: Alexander Miller <alexanderm@web.de>
-;; Package-Requires: ((treemacs "0.0") (emacs "25.2") (cl-lib "0.5"))
+;; Package-Requires: ((treemacs "0.0") (emacs "25.2"))
 ;; Version: 0
 ;; Homepage: https://github.com/Alexander-Miller/treemacs
 
@@ -21,15 +21,17 @@
 ;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
-;;; Treemacs icons for dired. Code is based on all-the-icons-dired.el
+;;; Treemacs icons for dired.  Code is based on all-the-icons-dired.el
 
 ;;; Code:
 
 (require 'treemacs)
 (require 'hl-line)
 (require 'dired)
-(require 'cl-lib)
 (require 'pcase)
+
+(eval-when-compile
+  (require 'treemacs-macros))
 
 (defvar-local treemacs-icons-dired-displayed nil
   "Flags whether icons have been added.")
@@ -136,6 +138,7 @@ This will make sure the icons' background colors will align with hl-line mode."
         (dolist (buffer (buffer-list))
           (with-current-buffer buffer
             (when (derived-mode-p 'dired-mode)
+              (treemacs--select-icon-set)
               (treemacs-icons-dired--enable-highlight-correction)
               (treemacs-icons-dired--display)))))
     (remove-hook 'dired-after-readin-hook #'treemacs-icons-dired--display)

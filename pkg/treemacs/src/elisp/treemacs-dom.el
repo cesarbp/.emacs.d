@@ -22,13 +22,20 @@
 
 (require 'ht)
 (require 'dash)
-(eval-and-compile
+(require 's)
+
+(eval-when-compile
+  (require 'cl-lib)
   (require 'inline)
   (require 'treemacs-macros))
 
+(cl-declaim (optimize (speed 3) (safety 0)))
+
 (defvar-local treemacs-dom nil)
 
-(treemacs--defstruct treemacs-dom-node
+(cl-defstruct (treemacs-dom-node
+               (:conc-name treemacs-dom-node->)
+               (:constructor treemacs-dom-node->create!))
   key
   parent
   children
@@ -127,7 +134,7 @@ POS: Marker"
              (setf (treemacs-dom-node->reentry-nodes parent-dom-node)
                    (cons dom-node (treemacs-dom-node->reentry-nodes parent-dom-node)))))
        ;; expansion of root
-       (setf dom-node (make-treemacs-dom-node :key ,key :position ,pos))
+       (setf dom-node (treemacs-dom-node->create! :key ,key :position ,pos))
        (treemacs-dom-node->insert-into-dom! dom-node)))))
 
 (define-inline treemacs-on-collapse (key &optional purge)
@@ -226,7 +233,7 @@ DONT-RENAME-INITIAL: Boolean"
 (defun treemacs-walk-dom (node fn)
   "Recursively walk the dom starting at NODE.
 Calls FN on every node encountered in a depth-first pattern, starting with the
-deepest. This assures that FN may destructively modify the dom, at least on
+deepest.  This assures that FN may destructively modify the dom, at least on
 levels the one currently visiting.
 
 NODE: Dom Node Struct
@@ -237,7 +244,7 @@ FN: (Dom Node) -> Any"
   (funcall fn node))
 
 (defun treemacs-walk-dom-exclusive (node fn)
-  "Same as `treemacs-walk-dom', but FN is not invoked on initial NODE.
+  "Same as `treemacs-walk-dom', but start NODE will not be passed to FN.
 
 NODE: Dom Node Struct
 FN: (Dom Node) -> Any"
@@ -250,7 +257,7 @@ FN: (Dom Node) -> Any"
 Unlike `treemacs-walk-dom' only expanded nodes are selected.
 
 Calls FN on every node encountered in a depth-first pattern, starting with the
-deepest. This assures that FN may destructively modify the dom, at least on
+deepest.  This assures that FN may destructively modify the dom, at least on
 levels the one currently visiting.
 
 NODE: Dom Node Struct
@@ -261,7 +268,7 @@ FN: (Dom Node) -> Any"
   (funcall fn node))
 
 (defun treemacs-walk-reentry-dom-exclusive (node fn)
-  "Same as `treemacs-walk-reentry-dom', but FN is not invoked on initial NODE.
+  "Same as `treemacs-walk-reentry-dom', but start NODE will not be passed to FN.
 
 NODE: Dom Node Struct
 FN: (Dom Node) -> Any"

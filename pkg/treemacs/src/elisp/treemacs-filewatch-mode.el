@@ -18,7 +18,7 @@
 ;;; Commentary:
 ;;; File event watch and reaction implementation.
 ;;; Open directories are put under watch and file changes event collected even if filewatch-mode
-;;; is disabled. This allows to remove deleted files from all the caches they are in. Activating
+;;; is disabled.  This allows to remove deleted files from all the caches they are in.  Activating
 ;;; filewatch-mode will therefore only enable automatic refresh of treemacs buffers.
 
 ;;; Code:
@@ -27,13 +27,12 @@
 (require 's)
 (require 'ht)
 (require 'filenotify)
-(require 'cl-lib)
 (require 'treemacs-core-utils)
 (require 'treemacs-async)
 (require 'treemacs-dom)
 (require 'treemacs-tags)
-(require 'treemacs-macros)
-(eval-and-compile
+(eval-when-compile
+  (require 'treemacs-macros)
   (require 'inline))
 
 (defvar treemacs--collapsed-filewatch-index (make-hash-table :size 100 :test #'equal)
@@ -44,9 +43,9 @@ need to be put under watch so as to be notified when the collapsed structure
 needs to change, but removing the file watch is not straightforward:
 
 Assume a series of directories are collapsed into one as '/c1/c2/c3/c4' and a
-new file is created in '/c1/c2'. A refresh is started and only '/c1/c2' is
+new file is created in '/c1/c2'.  A refresh is started and only '/c1/c2' is
 collapsed now, c3 and c4 are no longer part of the treemacs view and must be
-removed from the filewatch list. However the event that triggered the refresh
+removed from the filewatch list.  However the event that triggered the refresh
 was one of a file being created, so it is not possible to know that c3 and c4
 need to stop being watched unless one also knows that they and c2 are under file
 watch because they have been collapsed.
@@ -139,11 +138,11 @@ An event counts as relevant when
   (inline-letevals (event)
     (inline-quote
      (when (with-no-warnings treemacs-filewatch-mode)
-       (let ((action (cl-second ,event)))
+       (let ((action (cadr ,event)))
          (not (or (eq action 'stopped)
                   (and (eq action 'changed)
                        (not treemacs-git-mode))
-                  (let* ((dir (cl-third ,event))
+                  (let* ((dir (caddr ,event))
                          (filename (treemacs--filename dir)))
                     (--any? (funcall it filename dir) treemacs-ignored-file-predicates)))))))))
 
@@ -179,16 +178,17 @@ Also start the refresh timer if it's not started already."
 (defun treemacs--filewatch-callback (event)
   "Add EVENT to the list of file change events.
 Do nothing if this event's file is irrelevant as per
-`treemacs--is-event-relevant?'. Otherwise start a timer to process the collected
-events if it has not been started already. Also immediately remove the changed
-file from caches if it has been deleted instead of waiting for file processing."
+`treemacs--is-event-relevant?'.  Otherwise start a timer to process the
+collected events if it has not been started already.  Also immediately remove
+the changed file from caches if it has been deleted instead of waiting for file
+processing."
   (when (treemacs--is-event-relevant? event)
     (-let [(_ event-type path) event]
       (when (eq 'deleted event-type)
         (treemacs--on-file-deletion path :no-buffer-delete))
       (if (eq 'renamed event-type)
           (let ((old-name path)
-                (new-name (cl-fourth event)))
+                (new-name (cadddr event)))
             (treemacs-run-in-every-buffer
              (treemacs--on-rename old-name new-name (with-no-warnings treemacs-filewatch-mode)))
             (treemacs--set-refresh-flags (treemacs--parent old-name) 'deleted old-name)

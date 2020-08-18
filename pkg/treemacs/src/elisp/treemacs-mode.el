@@ -23,7 +23,6 @@
 (require 'eldoc)
 (require 's)
 (require 'f)
-(require 'hydra)
 (require 'treemacs-interface)
 (require 'treemacs-customization)
 (require 'treemacs-faces)
@@ -34,7 +33,11 @@
 (require 'treemacs-dom)
 (require 'treemacs-workspaces)
 (require 'treemacs-visuals)
-(eval-and-compile (require 'treemacs-macros))
+
+(eval-when-compile
+  (require 'treemacs-macros)
+  (require 'cl-lib))
+
 (with-eval-after-load 'bookmark
   (require 'treemacs-bookmarks))
 
@@ -117,6 +120,8 @@ to it will instead show a blank."
              (column-projects    (propertize "Projects" 'face 'treemacs-help-column-face))
              (column-ws          (propertize "Workspaces" 'face 'treemacs-help-column-face))
              (column-misc        (propertize "Misc." 'face 'treemacs-help-column-face))
+             (key-root-up        (treemacs--find-keybind #'treemacs-root-up))
+             (key-root-down      (treemacs--find-keybind #'treemacs-root-down))
              (key-next-line      (treemacs--find-keybind #'treemacs-next-line))
              (key-prev-line      (treemacs--find-keybind #'treemacs-previous-line))
              (key-next-neighbour (treemacs--find-keybind #'treemacs-next-neighbour))
@@ -175,8 +180,8 @@ to it will instead show a blank."
 %s goto parent      │ %s open vertical       │ %s copy        │ %s resizability     │                           │ %s Switch Workspace │ %s re-sort
 %s down next window │ %s open ace            │ %s move        │ %s fringe indicator │                           │ %s Set Fallback     │ %s bookmark
 %s up next window   │ %s open ace horizontal │                    │                         │                           │                             │
-                        │ %s open ace vertical   │                    │                         │                           │                             │
-                        │ %s open mru window     │                    │                         │                           │                             │
+%s root up          │ %s open ace vertical   │                    │                         │                           │                             │
+%s root down        │ %s open mru window     │                    │                         │                           │                             │
                         │ %s open externally     │                    │                         │                           │                             │
                         │ %s close parent        │                    │                         │                           │                             │
 "
@@ -189,8 +194,8 @@ to it will instead show a blank."
                (car key-goto-parent)    (car key-open-vert)   (car key-copy-file)    (car key-toggle-width)                           (car key-switch-ws)   (car key-resort)
                (car key-down-next-w)    (car key-open-ace)    (car key-move-file)    (car key-fringe-mode)                            (car key-fallback-ws) (car key-bookmark)
                (car key-up-next-w)      (car key-open-ace-h)
-                                        (car key-open-ace-v)
-                                        (car key-open-mru)
+               (car key-root-up)        (car key-open-ace-v)
+               (car key-root-down)      (car key-open-mru)
                                         (car key-open-ext)
                                         (car key-close-above)
                )))
@@ -199,6 +204,8 @@ to it will instead show a blank."
               ,hydra-str
               (,(cdr key-next-line)      #'treemacs-next-line)
               (,(cdr key-prev-line)      #'treemacs-previous-line)
+              (,(cdr key-root-up)        #'treemacs-root-up)
+              (,(cdr key-root-down)      #'treemacs-root-down)
               (,(cdr key-down-next-w)    #'treemacs-next-line-other-window)
               (,(cdr key-up-next-w)      #'treemacs-previous-line-other-window)
               (,(cdr key-next-neighbour) #'treemacs-next-neighbour)
@@ -244,7 +251,7 @@ to it will instead show a blank."
               (,(cdr key-fallback-ws)    #'treemacs-set-fallback-workspace)
               ("?" nil "Exit"))))
         (treemacs--helpful-hydra/body))
-    (treemacs-log "The helpful hydra cannot be summoned without an existing treemacs buffer.")))
+    (treemacs-log-failure "The helpful hydra cannot be summoned without an existing treemacs buffer.")))
 
 ;; no warning - we cannot require treemacs.el where all the autoloaded functions
 ;; are defined or we get a recursive require, so it's either this or an equally
@@ -354,7 +361,9 @@ to it will instead show a blank."
   "Create either a simple modeline, or integrate into spaceline."
   (setq mode-line-format
         (cond (treemacs-user-mode-line-format
-               treemacs-user-mode-line-format)
+               (if (eq 'none treemacs-user-mode-line-format)
+                   nil
+                 treemacs-user-mode-line-format))
               ((fboundp 'spaceline-install)
                (spaceline-install
                 "treemacs" '((workspace-number
@@ -422,6 +431,7 @@ Will simply return `treemacs--eldoc-msg'."
   ;; and make a switch to visual state
   (setq-local double-click-fuzz 15)
   (setq-local show-paren-mode nil)
+  (setq-local tab-width 1)
   (setq-local eldoc-documentation-function #'treemacs--eldoc-function)
   (setq-local eldoc-message-commands treemacs--eldoc-obarray)
   ;; integrate with bookmark.el
@@ -435,6 +445,10 @@ Will simply return `treemacs--eldoc-msg'."
   ;; invoke the movement of the fringe overlay that would otherwise be nil
   (when treemacs-fringe-indicator-mode
     (treemacs--enable-fringe-indicator))
+  (if treemacs-user-header-line-format
+      (setf header-line-format treemacs-user-header-line-format)
+    (when header-line-format
+      (setf header-line-format nil)))
   (hl-line-mode t)
 
   ;; needs to run manually the first time treemacs is loaded, since the hook is only added *after*

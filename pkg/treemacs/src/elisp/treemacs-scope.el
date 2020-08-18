@@ -26,13 +26,17 @@
 
 ;;; Code:
 
-(require 'cl-lib)
 (require 'dash)
 (require 'eieio)
 (require 'treemacs-core-utils)
-(require 'treemacs-macros)
 (require 's)
 (require 'inline)
+
+(eval-when-compile
+  (require 'treemacs-macros)
+  (require 'cl-lib))
+
+(cl-declaim (optimize (speed 3) (safety 0)))
 
 (treemacs-import-functions-from "treemacs-filewatch-mode"
   treemacs--stop-filewatch-for-current-buffer)
@@ -47,11 +51,16 @@
 (treemacs-import-functions-from "treemacs-workspaces"
   treemacs--find-workspace)
 
-(treemacs--defstruct treemacs-scope-shelf buffer workspace)
+
+(cl-defstruct (treemacs-scope-shelf
+               (:conc-name treemacs-scope-shelf->)
+               (:constructor treemacs-scope-shelf->create!))
+  buffer
+  workspace)
 
 (defvar treemacs-scope-types (list (cons 'Frames 'treemacs-frame-scope))
   "List of all known scope types.
-The car is the name seen in interactive selection. The cdr is the eieio class
+The car is the name seen in interactive selection.  The cdr is the eieio class
 name.")
 
 (defvar treemacs--current-scope-type 'treemacs-frame-scope
@@ -134,10 +143,10 @@ Can be used with `setf'."
   "Set a NEW-SCOPE-TYPE for treemacs buffers.
 Valid values for TYPE are the `car's of the elements of `treemacs-scope-types'.
 
-This is meant for programmatic use. For an interactive selection see
+This is meant for programmatic use.  For an interactive selection see
 `treemacs-select-buffer-scope-type'."
   (-let [class (alist-get new-scope-type treemacs-scope-types)]
-    (unless class (user-error "'%s' is not a valid scope new-scope-type. Valid types are: %s"
+    (unless class (user-error "'%s' is not a valid scope new-scope-type.  Valid types are: %s"
                               new-scope-type
                               (-map #'car treemacs-scope-types)))
     (treemacs--do-set-scope-type class)))
@@ -178,7 +187,7 @@ NEW-SCOPE-TYPE: T: treemacs-scope"
   "Create and store a new buffer for the given SCOPE."
   (-let [shelf (treemacs-current-scope-shelf scope)]
     (unless shelf
-      (setf shelf (make-treemacs-scope-shelf))
+      (setf shelf (treemacs-scope-shelf->create!))
       (push (cons scope shelf) treemacs--scope-storage)
       (treemacs--find-workspace (buffer-file-name)))
     (treemacs-scope-shelf->kill-buffer shelf)

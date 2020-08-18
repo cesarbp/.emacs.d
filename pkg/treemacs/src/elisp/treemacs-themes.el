@@ -23,15 +23,23 @@
 (require 'f)
 (require 'dash)
 (require 'ht)
-(require 'cl-lib)
-(require 'inline)
-(require 'treemacs-macros)
 (require 'treemacs-core-utils)
+(require 'treemacs-logging)
+
+(eval-when-compile
+  (require 'inline)
+  (require 'treemacs-macros)
+  (require 'cl-lib))
+
+(cl-declaim (optimize (speed 3) (safety 0)))
 
 (treemacs-import-functions-from "treemacs-icons"
   treemacs--select-icon-set)
 
-(treemacs--defstruct treemacs-theme
+(cl-defstruct (treemacs-theme
+               (:conc-name treemacs-theme->)
+               (:constructor treemacs-theme->create!)
+               (:named t))
   name path gui-icons tui-icons)
 
 (defvar treemacs--current-theme nil "The currently used theme.")
@@ -53,13 +61,14 @@
 (cl-defmacro treemacs-create-theme (name &key icon-directory extends config)
   "Create a new (bare) theme with the given NAME.
 - ICON-DIRECTORY is the (mandatory) theme's location.
+- EXTENDS is the theme to be extended.
 - BASED-ON is the name of a theme whose icons this one should start with.
 - CONFIG is a code block to fill the created theme with icons via
   `treemacs-create-icon'."
   (declare (indent 1))
   `(let* ((gui-icons (make-hash-table :size 300 :test 'equal))
           (tui-icons (make-hash-table :size 300 :test 'equal))
-          (theme (make-treemacs-theme
+          (theme (treemacs-theme->create!
                   :name ,name
                   :path ,icon-directory
                   :gui-icons gui-icons
@@ -67,7 +76,7 @@
      (add-to-list 'treemacs--themes theme)
      ,(when extends
         `(treemacs-unless-let (base-theme (treemacs--find-theme ,extends))
-             (treemacs-log "Could not find base theme %s when creating theme %s." ,extends ,name)
+             (treemacs-log-failure "Could not find base theme %s when creating theme %s." ,extends ,name)
            (treemacs--maphash (treemacs-theme->gui-icons base-theme) (ext icon)
              (ht-set! gui-icons ext icon))
            (treemacs--maphash (treemacs-theme->tui-icons base-theme) (ext icon)
@@ -98,7 +107,7 @@
              ,config
              (treemacs--propagate-new-icons theme))
          (setf (treemacs-theme->path theme) original-icon-dir))
-       (treemacs-theme->name theme))))
+       nil)))
 
 (defun treemacs--propagate-new-icons (theme)
   "Add THEME's new icons to the other themes."
@@ -120,7 +129,7 @@ and restored."
   (interactive
    (list (completing-read "Theme: " (-map #'treemacs-theme->name treemacs--themes))))
   (treemacs-unless-let (theme (treemacs--find-theme name))
-      (treemacs-log "Cannot find theme '%s'." name)
+      (treemacs-log-failure "Cannot find theme '%s'." name)
     (setq treemacs--current-theme theme)
     (dolist (buffer (buffer-list))
       (when (memq (buffer-local-value 'major-mode buffer) '(treemacs-mode dired-mode))

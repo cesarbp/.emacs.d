@@ -30,6 +30,10 @@
 (require 'eieio)
 (require 'dash)
 
+(eval-when-compile
+  (require 'treemacs-macros)
+  (require 'cl-lib))
+
 ;; remove base compatibility hook
 (remove-hook 'persp-activated-functions #'treemacs--remove-treemacs-window-in-new-frames)
 
@@ -68,7 +72,7 @@ Will select a workspace for the now active perspective, creating it if necessary
 
 (defun treemacs-persp--ensure-workspace-exists ()
   "Make sure a workspace exists for the given PERSP-NAME.
-Matching happens by name. If no workspace can be found it will be created."
+Matching happens by name.  If no workspace can be found it will be created."
   (let* ((persp-name (treemacs-scope->current-scope-name
                       (treemacs-current-scope-type) (treemacs-current-scope)))
          (workspace (or (treemacs--select-workspace-by-name persp-name)
@@ -80,7 +84,7 @@ Matching happens by name. If no workspace can be found it will be created."
 
 (defun treemacs-persp--create-workspace (name)
   "Create a new workspace for the given persp NAME.
-Projects will be found as per `treemacs--find-user-project-functions'. If that
+Projects will be found as per `treemacs--find-user-project-functions'.  If that
 does not return anything the projects of the fallback workspace will be copied."
   (treemacs-block
    (let* ((ws-result (treemacs-do-create-workspace name))
@@ -93,7 +97,7 @@ does not return anything the projects of the fallback workspace will be copied."
        (treemacs-return (car treemacs--workspaces)))
      (if root-path
          (setf project-list
-               (list (make-treemacs-project
+               (list (treemacs-project->create!
                       :name (treemacs--filename root-path)
                       :path root-path
                       :path-status (treemacs--get-path-status root-path))))
@@ -101,7 +105,7 @@ does not return anything the projects of the fallback workspace will be copied."
          ;; copy the projects instead of reusing them so we don't accidentially rename
          ;; a project in 2 workspaces
          (dolist (project (treemacs-workspace->projects fallback-workspace))
-           (push (make-treemacs-project
+           (push (treemacs-project->create!
                   :name (treemacs-project->name project)
                   :path (treemacs-project->path project)
                   :path-status (treemacs-project->path-status project))
