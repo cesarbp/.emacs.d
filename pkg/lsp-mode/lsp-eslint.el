@@ -24,11 +24,12 @@
 
 ;;; Code:
 
+(require 'lsp-protocol)
 (require 'lsp-mode)
 
-(defconst lsp-eslint-status-ok 1)
-(defconst lsp-eslint-status-warn 2)
-(defconst lsp-eslint-status-error 3)
+(defconst lsp-eslint/status-ok 1)
+(defconst lsp-eslint/status-warn 2)
+(defconst lsp-eslint/status-error 3)
 
 (defgroup lsp-eslint nil
   "ESlint language server group."
@@ -50,7 +51,10 @@
 
 (defcustom lsp-eslint-package-manager "npm"
   "The package manager you use to install node modules."
-  :type '(choice (:tag "npm" "yarn" "pnpm"))
+  :type '(choice (const :tag "npm" "npm")
+                 (const :tag "yarn" "yarn")
+                 (const :tag "pnpm" "pnpm")
+                 (string :tag "other"))
   :package-version '(lsp-mode . "6.3"))
 
 (defcustom lsp-eslint-format t
@@ -75,13 +79,24 @@
 
 (defcustom lsp-eslint-run "onType"
   "Run the linter on save (onSave) or on type (onType)"
-  :type '(choice (:tag "onSave" "onType"))
+  :type '(choice (const :tag "onSave" "onSave")
+                 (const :tag "onType" "onType"))
   :package-version '(lsp-mode . "6.3"))
 
 (defcustom lsp-eslint-auto-fix-on-save nil
   "Turns auto fix on save on or off."
   :type 'boolean
   :package-version '(lsp-mode . "6.3"))
+
+(defcustom lsp-eslint-fix-all-problem-type
+  "all"
+  "Determines which problems are fixed when running the
+source.fixAll code action."
+  :type '(choice
+          (const "all")
+          (const "problems")
+          string)
+  :package-version '(lsp-mode . "7.0.1"))
 
 (defcustom lsp-eslint-quiet nil
   "Turns on quiet mode, which ignores warnings."
@@ -134,7 +149,7 @@
 
 (defun lsp--find-eslint ()
   (or
-   (when-let (workspace-folder (lsp-find-session-folder (lsp-session) default-directory))
+   (when-let ((workspace-folder (lsp-find-session-folder (lsp-session) default-directory)))
      (let ((eslint-local-path (f-join workspace-folder "node_modules" ".bin"
                                       (if (eq system-type 'windows-nt) "eslint.cmd" "eslint"))))
        (when (f-exists? eslint-local-path)
@@ -145,36 +160,36 @@
   "Create default eslint configuration."
   (interactive)
   (unless (lsp-session-folders (lsp-session))
-    (user-error "There are no workspace folders."))
+    (user-error "There are no workspace folders"))
   (pcase (->> (lsp-session)
               lsp-session-folders
               (-filter (lambda (dir)
                          (-none?
                           (lambda (file) (f-exists? (f-join dir file)))
                           '(".eslintrc.js" ".eslintrc.yaml" ".eslintrc.yml" ".eslintrc" ".eslintrc.json")))))
-    (`nil (user-error "All workspace folders contain eslint configuration."))
+    (`nil (user-error "All workspace folders contain eslint configuration"))
     (folders (let ((default-directory (completing-read "Select project folder: " folders nil t)))
                (async-shell-command (format "%s --init" (lsp--find-eslint)))))))
 
-(defun lsp-eslint-status-handler (workspace params)
+(lsp-defun lsp-eslint-status-handler (workspace (&eslint:StatusParams :state))
   (setf (lsp--workspace-status-string workspace)
         (propertize "ESLint"
                     'face (cond
-                           ((eq (gethash "state" params) lsp-eslint-status-error) 'error)
-                           ((eq (gethash "state" params) lsp-eslint-status-warn) 'warn)
+                           ((eq state lsp-eslint/status-error) 'error)
+                           ((eq state lsp-eslint/status-warn) 'warn)
                            (t 'success)))))
 
-(defun lsp-eslint--configuration (_workspace params)
-  (->> params
-       (gethash "items")
-       (seq-map (-lambda ((&hash "scopeUri" uri))
-                  (-when-let* ((file (lsp--uri-to-path uri))
+(lsp-defun lsp-eslint--configuration (_workspace (&ConfigurationParams :items))
+  (->> items
+       (seq-map (-lambda ((&ConfigurationItem :scope-uri?))
+                  (-when-let* ((file (lsp--uri-to-path scope-uri?))
                                (buffer (find-buffer-visiting file))
                                (workspace-folder (lsp-find-session-folder (lsp-session) file)))
                     (with-current-buffer buffer
                       (list :validate "probe"
                             :packageManager lsp-eslint-package-manager
-                            :codeActionOnSave t
+                            :codeActionOnSave (list :enable t
+                                                    :mode lsp-eslint-fix-all-problem-type)
                             :format (lsp-json-bool lsp-eslint-format)
                             :options (or lsp-eslint-options (ht))
                             :run (or lsp-eslint-run "onType")
@@ -187,16 +202,30 @@
                                          :disableRuleComment (or lsp-eslint-code-action-disable-rule-comment
                                                                  (list :enable t
                                                                        :location "separateLine"))
-                                         :showDocumentation (or lsp-eslint-code-action-show-documentation (list :enable t)) ))))))
+                                         :showDocumentation (or lsp-eslint-code-action-show-documentation
+                                                                (list :enable t))))))))
        (apply #'vector)))
 
-(defun lsp-eslint--open-doc (_workspace params)
-  (browse-url (gethash "url" params)))
+(lsp-defun lsp-eslint--open-doc (_workspace (&eslint:OpenESLintDocParams :url))
+  "Open documentation."
+  (browse-url url))
 
 (defun lsp-eslint-apply-all-fixes ()
   "Apply all autofixes in the current buffer."
   (interactive)
   (lsp-send-execute-command "eslint.applyAllFixes" (vector (lsp--versioned-text-document-identifier))))
+
+;; XXX: replace with `lsp-make-interactive-code-action' macro
+;; (lsp-make-interactive-code-action eslint-fix-all "source.fixAll.eslint")
+
+(defun lsp-eslint-fix-all ()
+  "Perform the source.fixAll.eslint code action, if available."
+  (interactive)
+  (condition-case nil
+      (lsp-execute-code-action-by-kind "source.fixAll.eslint")
+    (lsp-no-code-actions
+     (when (called-interactively-p 'any)
+       (lsp--info "source.fixAll.eslint action not available")))))
 
 (lsp-register-client
  (make-lsp-client
@@ -222,12 +251,17 @@
   :initialized-fn (lambda (workspace)
                     (with-lsp-workspace workspace
                       (lsp--server-register-capability
-                       (ht ("id" "random-id")
-                           ("method" "workspace/didChangeWatchedFiles")
-                           ("registerOptions" (ht ("watchers"
-                                                   (vector (ht ("globPattern" "**/.eslintr{c.js,c.yaml,c.yml,c,c.json}"))
-                                                           (ht ("globPattern" "**/.eslintignore"))
-                                                           (ht ("globPattern" "**/package.json"))))))))))))
+                       (lsp-make-registration
+                        :id "random-id"
+                        :method "workspace/didChangeWatchedFiles"
+                        :register-options? (lsp-make-did-change-watched-files-registration-options
+                                            :watchers
+                                            `[,(lsp-make-file-system-watcher
+                                                :glob-pattern "**/.eslintr{c.js,c.yaml,c.yml,c,c.json}")
+                                              ,(lsp-make-file-system-watcher
+                                                :glob-pattern "**/.eslintignore")
+                                              ,(lsp-make-file-system-watcher
+                                                :glob-pattern "**/package.json")])))))))
 
 (provide 'lsp-eslint)
 ;;; lsp-eslint.el ends here

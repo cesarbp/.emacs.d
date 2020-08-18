@@ -34,7 +34,7 @@
   :link '(url-link "https://github.com/rust-lang/rls")
   :package-version '(lsp-mode . "6.1"))
 
-(defcustom lsp-rust-server 'rls
+(defcustom lsp-rust-server 'rust-analyzer
   "Choose LSP server."
   :type '(choice (const :tag "rls" rls)
                  (const :tag "rust-analyzer" rust-analyzer))
@@ -159,7 +159,7 @@ change."
   :package-version '(lsp-mode . "6.1"))
 
 (defcustom lsp-rust-features []
-  "A list of Cargo features to enable."
+  "List of Cargo features to enable."
   :type 'lsp-string-vector
   :group 'lsp-rust
   :package-version '(lsp-mode . "6.1"))
@@ -285,14 +285,13 @@ is often the type local variable declaration."
 (defun lsp-clients--rust-window-progress (workspace params)
   "Progress report handling.
 PARAMS progress report notification data."
-  (-let (((&hash "done" "message" "title") params))
-    (if (or done (s-blank-str? message))
+  (-let [(&v1:ProgressParams :done? :message? :title) params]
+    (if (or done? (s-blank-str? message?))
         (lsp-workspace-status nil workspace)
-      (lsp-workspace-status (format "%s - %s" title (or message "")) workspace))))
+      (lsp-workspace-status (format "%s - %s" title (or message? "")) workspace))))
 
-(cl-defmethod lsp-execute-command
-  (_server (_command (eql rls.run)) params)
-  (-let* (((&hash "env" "binary" "args" "cwd") (lsp-seq-first params))
+(cl-defmethod lsp-execute-command (_server (_command (eql rls.run)) params)
+  (-let* (((&rls:Cmd :env :binary :args :cwd) (lsp-seq-first params))
           (default-directory (or cwd (lsp-workspace-root) default-directory) ))
     (compile
      (format "%s %s %s"
@@ -336,8 +335,20 @@ PARAMS progress report notification data."
   :group 'lsp-rust
   :package-version '(lsp-mode . "6.2.2"))
 
+(defcustom lsp-rust-analyzer-display-parameter-hints nil
+  "Whether to show function parameter name inlay hints at the call site."
+  :type 'boolean
+  :group 'lsp-rust
+  :package-version '(lsp-mode . "6.2.2"))
+
+(defcustom lsp-rust-analyzer-display-chaining-hints nil
+  "Whether to show inlay type hints for method chains."
+  :type 'boolean
+  :group 'lsp-rust
+  :package-version '(lsp-mode . "6.2.2"))
+
 (defcustom lsp-rust-analyzer-lru-capacity nil
-  "LRU capacity."
+  "Number of syntax trees rust-analyzer keeps in memory."
   :type 'integer
   :group 'lsp-rust
   :package-version '(lsp-mode . "6.2.2"))
@@ -360,6 +371,13 @@ PARAMS progress report notification data."
   :group 'lsp-rust
   :package-version '(lsp-mode . "6.2.2"))
 
+(defcustom lsp-rust-analyzer-cargo-override-command []
+  "Advanced option, fully override the command rust-analyzer uses for checking.
+The command should include `--message=format=json` or similar option."
+  :type 'lsp-string-vector
+  :group 'lsp-rust
+  :package-version '(lsp-mode . "6.2.2"))
+
 (defcustom lsp-rust-analyzer-cargo-all-targets nil
   "Cargo watch all targets or not."
   :type 'boolean
@@ -378,72 +396,100 @@ PARAMS progress report notification data."
   :group 'lsp-rust
   :package-version '(lsp-mode . "6.2.2"))
 
-(defcustom lsp-rust-analyzer-enabled-feature-flags []
-  "Feature flags to enable (all feature flags are currently enabled by default)."
-  :type 'lsp-string-vector
-  :group 'lsp-rust
-  :package-version '(lsp-mode . "6.2.2"))
-
-(defcustom lsp-rust-analyzer-disabled-feature-flags []
-  "Feature flags to disable (all feature flags are currently enabled by default)."
-  :type 'lsp-string-vector
-  :group 'lsp-rust
-  :package-version '(lsp-mode . "6.2.2"))
-
 (defcustom lsp-rust-analyzer-macro-expansion-method 'lsp-rust-analyzer-macro-expansion-default
   "Use a different function if you want formatted macro expansion results and syntax highlighting."
   :type 'function
   :group 'lsp-rust
   :package-version '(lsp-mode . "6.2.2"))
 
+(defcustom lsp-rust-analyzer-diagnostics-enable t
+  "Whether to show native rust-analyzer diagnostics."
+  :type 'boolean
+  :group 'lsp-rust
+  :package-version '(lsp-mode . "6.3.2"))
+
+(defcustom lsp-rust-analyzer-cargo-load-out-dirs-from-check nil
+  "Whether to run `cargo check` on startup to get the correct value for package OUT_DIRs."
+  :type 'boolean
+  :group 'lsp-rust
+  :package-version '(lsp-mode . "6.3.2"))
+
+(defcustom lsp-rust-analyzer-rustfmt-extra-args []
+  "Additional arguments to rustfmt."
+  :type 'lsp-string-vector
+  :group 'lsp-rust
+  :package-version '(lsp-mode . "6.3.2"))
+
+(defcustom lsp-rust-analyzer-rustfmt-override-command []
+  "Advanced option, fully override the command rust-analyzer uses for formatting."
+  :type 'lsp-string-vector
+  :group 'lsp-rust
+  :package-version '(lsp-mode . "6.3.2"))
+
+(defcustom lsp-rust-analyzer-completion-add-call-parenthesis t
+  "Whether to add parenthesis when completing functions."
+  :type 'boolean
+  :group 'lsp-rust
+  :package-version '(lsp-mode . "6.3.2"))
+
+(defcustom lsp-rust-analyzer-completion-add-call-argument-snippets t
+  "Whether to add argument snippets when completing functions."
+  :type 'boolean
+  :group 'lsp-rust
+  :package-version '(lsp-mode . "6.3.2"))
+
+(defcustom lsp-rust-analyzer-completion-postfix-enable t
+  "Whether to show postfix snippets like `dbg`, `if`, `not`, etc."
+  :type 'boolean
+  :group 'lsp-rust
+  :package-version '(lsp-mode . "6.3.2"))
+
+(defcustom lsp-rust-analyzer-call-info-full t
+  "Whether to show function name and docs in parameter hints."
+  :type 'boolean
+  :group 'lsp-rust
+  :package-version '(lsp-mode . "6.3.2"))
+
+(defcustom lsp-rust-analyzer-proc-macro-enable nil
+  "Enable Proc macro support; lsp-rust-analyzer-cargo-load-out-dirs-from-check must be enabled."
+  :type 'boolean
+  :group 'lsp-rust
+  :package-version '(lsp-mode . "6.3.2"))
+
 (defun lsp-rust-analyzer--make-init-options ()
   "Init options for rust-analyzer"
-  (let ((feature-flags (or (append (--map (cons (intern it) json-false) lsp-rust-analyzer-disabled-feature-flags)
-                                   (--map (cons (intern it) t) lsp-rust-analyzer-enabled-feature-flags))
-                           (make-hash-table))))
-    `(:lruCapacity ,lsp-rust-analyzer-lru-capacity
-      :maxInlayHintLength ,lsp-rust-analyzer-max-inlay-hint-length
-      :cargoWatchEnable ,(lsp-json-bool lsp-rust-analyzer-cargo-watch-enable)
-      :cargoWatchCommand ,lsp-rust-analyzer-cargo-watch-command
-      :cargoWatchArgs ,lsp-rust-analyzer-cargo-watch-args
-      :cargoWatchAllTargets ,(lsp-json-bool lsp-rust-analyzer-cargo-all-targets)
-      :excludeGlobs ,lsp-rust-analyzer-exclude-globs
-      :useClientWatching ,(lsp-json-bool lsp-rust-analyzer-use-client-watching)
-      :featureFlags ,feature-flags
-      :cargoFeatures (:allFeatures ,(lsp-json-bool lsp-rust-all-features)
-                      :noDefaultFeatures ,(lsp-json-bool lsp-rust-no-default-features)
-                      :features ,lsp-rust-features))))
+  `(:diagnostics (:enable ,(lsp-json-bool lsp-rust-analyzer-diagnostics-enable))
+    :lruCapacity ,lsp-rust-analyzer-lru-capacity
+    :checkOnSave (:enable ,(lsp-json-bool lsp-rust-analyzer-cargo-watch-enable)
+                  :command ,lsp-rust-analyzer-cargo-watch-command
+                  :extraArgs ,lsp-rust-analyzer-cargo-watch-args
+                  :allTargets ,(lsp-json-bool lsp-rust-analyzer-cargo-all-targets)
+                  :overrideCommand ,lsp-rust-analyzer-cargo-override-command)
+    :files (:exclude ,lsp-rust-analyzer-exclude-globs
+            :watcher ,(lsp-json-bool (if lsp-rust-analyzer-use-client-watching
+                                         "client"
+                                       "notify")))
+    :cargo (:allFeatures ,(lsp-json-bool lsp-rust-all-features)
+            :noDefaultFeatures ,(lsp-json-bool lsp-rust-no-default-features)
+            :features ,lsp-rust-features
+            :loadOutDirsFromCheck ,(lsp-json-bool lsp-rust-analyzer-cargo-load-out-dirs-from-check))
+    :rustfmt (:extraArgs ,lsp-rust-analyzer-rustfmt-extra-args
+              :overrideCommand ,lsp-rust-analyzer-rustfmt-override-command)
+    :inlayHints (:typeHints ,(lsp-json-bool lsp-rust-analyzer-server-display-inlay-hints)
+                 :chainingHints ,(lsp-json-bool lsp-rust-analyzer-display-chaining-hints)
+                 :parameterHints ,(lsp-json-bool lsp-rust-analyzer-display-parameter-hints)
+                 :maxLength ,lsp-rust-analyzer-max-inlay-hint-length)
+    :completion (:addCallParenthesis ,(lsp-json-bool lsp-rust-analyzer-completion-add-call-parenthesis)
+                 :addCallArgumentSnippets ,(lsp-json-bool lsp-rust-analyzer-completion-add-call-argument-snippets)
+                 :postfix (:enable ,(lsp-json-bool lsp-rust-analyzer-completion-postfix-enable)))
+    :callInfo (:full ,(lsp-json-bool lsp-rust-analyzer-call-info-full))
+    :procMacro (:enable ,(lsp-json-bool lsp-rust-analyzer-proc-macro-enable))))
 
 (defconst lsp-rust-notification-handlers
   '(("rust-analyzer/publishDecorations" . (lambda (_w _p)))))
 
 (defconst lsp-rust-action-handlers
-  '(("rust-analyzer.applySourceChange" .
-     (lambda (p) (lsp-rust-apply-source-change-command p)))
-    ("rust-analyzer.selectAndApplySourceChange" .
-     (lambda (p) (lsp-rust-select-and-apply-source-change-command p)))))
-
-(defun lsp-rust-apply-source-change-command (p)
-  (let ((data (-> p (ht-get "arguments") (lsp-seq-first))))
-    (lsp-rust-apply-source-change data)))
-
-(defun lsp-rust-uri-filename (text-document)
-  (lsp--uri-to-path (gethash "uri" text-document)))
-
-(defun lsp-rust-apply-source-change (data)
-  (seq-doseq (it (-> data (ht-get "workspaceEdit") (ht-get "documentChanges")))
-    (lsp--apply-text-document-edit it))
-  (-when-let (cursor-position (ht-get data "cursorPosition"))
-    (let ((filename (lsp-rust-uri-filename (ht-get cursor-position "textDocument")))
-          (position (ht-get cursor-position "position")))
-      (find-file filename)
-      (goto-char (lsp--position-to-point position)))))
-
-(defun lsp-rust-select-and-apply-source-change-command (p)
-  (let* ((options (-> p (ht-get "arguments") (lsp-seq-first)))
-         (chosen-option (lsp--completing-read "Select option:" options
-                                              (-lambda ((&hash "label")) label))))
-    (lsp-rust-apply-source-change chosen-option)))
+  '())
 
 (define-derived-mode lsp-rust-analyzer-syntax-tree-mode special-mode "Rust-Analyzer-Syntax-Tree"
   "Mode for the rust-analyzer syntax tree buffer.")
@@ -453,10 +499,11 @@ PARAMS progress report notification data."
   (interactive)
   (-if-let* ((workspace (lsp-find-workspace 'rust-analyzer))
              (root (lsp-workspace-root default-directory))
-             (params (list :textDocument (lsp--text-document-identifier)
-                           :range (if (use-region-p)
-                                      (lsp--region-to-range (region-beginning) (region-end))
-                                    (lsp--region-to-range (point-min) (point-max)))))
+             (params (lsp-make-rust-analyzer-syntax-tree-params
+                      :text-document (lsp--text-document-identifier)
+                      :range? (if (use-region-p)
+                                  (lsp--region-to-range (region-beginning) (region-end))
+                                (lsp--region-to-range (point-min) (point-max)))))
              (results (with-lsp-workspace workspace
                         (lsp-send-request (lsp-make-request
                                            "rust-analyzer/syntaxTree"
@@ -494,12 +541,13 @@ PARAMS progress report notification data."
 (defun lsp-rust-analyzer-join-lines ()
   "Join selected lines into one, smartly fixing up whitespace and trailing commas."
   (interactive)
-  (let* ((params (list :textDocument (lsp--text-document-identifier)
-                       :range (if (use-region-p)
-                                  (lsp--region-to-range (region-beginning) (region-end))
-                                (lsp--region-to-range (point) (point)))))
-         (result (lsp-send-request (lsp-make-request "rust-analyzer/joinLines" params))))
-    (lsp-rust-apply-source-change result)))
+  (let* ((params (lsp-make-rust-analyzer-join-lines-params
+                  :text-document (lsp--text-document-identifier)
+                  :ranges (vector (if (use-region-p)
+                                      (lsp--region-to-range (region-beginning) (region-end))
+                                    (lsp--region-to-range (point) (point))))))
+         (result (lsp-send-request (lsp-make-request "experimental/joinLines" params))))
+    (lsp--apply-text-edits result)))
 
 (lsp-register-client
  (make-lsp-client
@@ -510,8 +558,12 @@ PARAMS progress report notification data."
   :notification-handlers (ht<-alist lsp-rust-notification-handlers)
   :action-handlers (ht<-alist lsp-rust-action-handlers)
   :library-folders-fn (lambda (_workspace) lsp-rust-library-directories)
+  :after-open-fn (lambda ()
+                   (when lsp-rust-analyzer-server-display-inlay-hints
+                     (lsp-rust-analyzer-inlay-hints-mode)))
   :ignore-messages nil
-  :server-id 'rust-analyzer))
+  :server-id 'rust-analyzer
+  :custom-capabilities `((experimental . ((snippetTextEdit . ,lsp-enable-snippet ))))))
 
 (defun lsp-rust-switch-server (&optional lsp-server)
   "Switch priorities of lsp servers, unless LSP-SERVER is already active."
@@ -529,30 +581,101 @@ PARAMS progress report notification data."
 
 (defvar-local lsp-rust-analyzer-inlay-hints-timer nil)
 
+(defface lsp-rust-analyzer-inlay-face
+  '((t :inherit font-lock-comment-face))
+  "The face to use for the Rust Analyzer inlays."
+  :group 'lsp-rust
+  :package-version '(lsp-mode . "7.0"))
+
+(defface lsp-rust-analyzer-inlay-type-face
+  '((t :inherit lsp-rust-analyzer-inlay-face))
+  "Face for inlay type hints (e.g. inferred variable types)."
+  :group 'lsp-rust
+  :package-version '(lsp-mode . "7.1"))
+
+(defcustom lsp-rust-analyzer-inlay-type-space-format "%s"
+  "Format string for spacing around variable inlays (not part of the inlay face)."
+  :type '(string :tag "String")
+  :group 'lsp-rust
+  :package-version '(lsp-mode . "7.1"))
+
+(defcustom lsp-rust-analyzer-inlay-type-format ": %s"
+  "Format string for variable inlays (part of the inlay face)."
+  :type '(string :tag "String")
+  :group 'lsp-rust
+  :package-version '(lsp-mode . "7.1"))
+
+(defface lsp-rust-analyzer-inlay-param-face
+  '((t :inherit lsp-rust-analyzer-inlay-face))
+  "Face for inlay parameter hints (e.g. function parameter names at call-site)."
+  :group 'lsp-rust
+  :package-version '(lsp-mode . "7.1"))
+
+(defcustom lsp-rust-analyzer-inlay-param-space-format "%s "
+  "Format string for spacing around parameter inlays (not part of the inlay face)."
+  :type '(string :tag "String")
+  :group 'lsp-rust
+  :package-version '(lsp-mode . "7.1"))
+
+(defcustom lsp-rust-analyzer-inlay-param-format "%s:"
+  "Format string for parameter inlays (part of the inlay face)."
+  :type '(string :tag "String")
+  :group 'lsp-rust
+  :package-version '(lsp-mode . "7.1"))
+
+(defface lsp-rust-analyzer-inlay-chain-face
+  '((t :inherit lsp-rust-analyzer-inlay-face))
+  "Face for inlay chaining hints (e.g. inferred chain intermediate types)."
+  :group 'lsp-rust
+  :package-version '(lsp-mode . "7.1"))
+
+(defcustom lsp-rust-analyzer-inlay-chain-space-format "%s"
+  "Format string for spacing around chain inlays (not part of the inlay face)."
+  :type '(string :tag "String")
+  :group 'lsp-rust
+  :package-version '(lsp-mode . "7.1"))
+
+(defcustom lsp-rust-analyzer-inlay-chain-format ": %s"
+  "Format string for chain inlays (part of the inlay face)."
+  :type '(string :tag "String")
+  :group 'lsp-rust
+  :package-version '(lsp-mode . "7.1"))
+
 (defun lsp-rust-analyzer-update-inlay-hints (buffer)
   (if (and (lsp-rust-analyzer-initialized?)
            (eq buffer (current-buffer)))
       (lsp-request-async
        "rust-analyzer/inlayHints"
-       (list :textDocument (lsp--text-document-identifier))
+       (lsp-make-rust-analyzer-inlay-hints-params
+        :text-document (lsp--text-document-identifier))
        (lambda (res)
          (remove-overlays (point-min) (point-max) 'lsp-rust-analyzer-inlay-hint t)
          (dolist (hint res)
-           (-let* (((&hash "range" "label" "kind") hint)
-                   ((beg . end) (lsp--range-to-region range))
-                   (overlay (make-overlay beg end)))
+           (-let* (((&rust-analyzer:InlayHint :range :label :kind) hint)
+                   ((&RangeToPoint :start :end) range)
+                   (overlay (make-overlay start end nil 'front-advance 'end-advance)))
              (overlay-put overlay 'lsp-rust-analyzer-inlay-hint t)
              (overlay-put overlay 'evaporate t)
              (cond
-              ((string= kind "TypeHint")
-               (overlay-put overlay 'after-string (propertize (concat ": " label)
-                                                              'font-lock-face 'font-lock-comment-face)))
-              ((string= kind "ParameterHint")
-               (overlay-put overlay 'before-string (propertize (concat label ": ")
-                                                               'font-lock-face 'font-lock-comment-face)))
-              ))))
+              ((equal kind lsp/rust-analyzer-inlay-hint-kind-type-hint)
+               (overlay-put overlay 'after-string
+                (format lsp-rust-analyzer-inlay-type-space-format
+                 (propertize (format lsp-rust-analyzer-inlay-type-format label)
+                  'font-lock-face 'lsp-rust-analyzer-inlay-type-face))))
+
+              ((equal kind lsp/rust-analyzer-inlay-hint-kind-param-hint)
+               (overlay-put overlay 'before-string
+                (format lsp-rust-analyzer-inlay-param-space-format
+                 (propertize (format lsp-rust-analyzer-inlay-param-format label)
+                  'font-lock-face 'lsp-rust-analyzer-inlay-param-face))))
+
+              ((equal kind lsp/rust-analyzer-inlay-hint-kind-chaining-hint)
+               (overlay-put overlay 'after-string
+                (format lsp-rust-analyzer-inlay-chain-space-format
+                 (propertize (format lsp-rust-analyzer-inlay-chain-format label)
+                  'font-lock-face 'lsp-rust-analyzer-inlay-chain-face))))))))
        :mode 'tick))
-  nil)
+ nil)
 
 (defun lsp-rust-analyzer-initialized? ()
   (when-let ((workspace (lsp-find-workspace 'rust-analyzer)))
@@ -570,31 +693,24 @@ PARAMS progress report notification data."
   (cond
    (lsp-rust-analyzer-inlay-hints-mode
     (lsp-rust-analyzer-update-inlay-hints (current-buffer))
-    (add-hook 'lsp-on-idle-hook #'lsp-rust-analyzer-inlay-hints-change-handler nil t)
     (add-hook 'lsp-on-change-hook #'lsp-rust-analyzer-inlay-hints-change-handler nil t))
    (t
     (remove-overlays (point-min) (point-max) 'lsp-rust-analyzer-inlay-hint t)
-    (remove-hook 'lsp-on-idle-hook #'lsp-rust-analyzer-inlay-hints-change-handler t)
     (remove-hook 'lsp-on-change-hook #'lsp-rust-analyzer-inlay-hints-change-handler t))))
-
-;; activate `lsp-rust-analyzer-inlay-hints-mode'
-(when lsp-rust-analyzer-server-display-inlay-hints
-  (add-hook 'lsp-after-open-hook (lambda ()
-                                   (when (lsp-find-workspace 'rust-analyzer nil)
-                                     (lsp-rust-analyzer-inlay-hints-mode)))))
 
 (defun lsp-rust-analyzer-expand-macro ()
   "Expands the macro call at point recursively."
   (interactive)
   (-if-let (workspace (lsp-find-workspace 'rust-analyzer))
-      (-if-let* ((params (list :textDocument (lsp--text-document-identifier)
-                               :position (lsp--cur-position)))
+      (-if-let* ((params (lsp-make-rust-analyzer-expand-macro-params
+                          :text-document (lsp--text-document-identifier)
+                          :position (lsp--cur-position)))
                  (response (with-lsp-workspace workspace
                              (lsp-send-request (lsp-make-request
                                                 "rust-analyzer/expandMacro"
                                                 params))))
-                 (result (ht-get response "expansion")))
-          (funcall lsp-rust-analyzer-macro-expansion-method result)
+                 ((&rust-analyzer:ExpandedMacro :expansion) response))
+          (funcall lsp-rust-analyzer-macro-expansion-method expansion)
         (message "No macro found at point, or it could not be expanded."))
     (message "rust-analyzer not running.")))
 
@@ -612,41 +728,49 @@ PARAMS progress report notification data."
 ;; runnables
 (defvar lsp-rust-analyzer--last-runnable nil)
 
-(defun lsp-rust-analyzer--runnables-params ()
-  (list :textDocument (lsp--text-document-identifier)
-        :position (lsp--cur-position)))
-
 (defun lsp-rust-analyzer--runnables ()
-  (lsp-send-request (lsp-make-request "rust-analyzer/runnables"
-                                      (lsp-rust-analyzer--runnables-params))))
+  (lsp-send-request (lsp-make-request
+                     "experimental/runnables"
+                     (lsp-make-rust-analyzer-runnables-params
+                      :text-document (lsp--text-document-identifier)
+                      :position? (lsp--cur-position)))))
 
 (defun lsp-rust-analyzer--select-runnable ()
   (lsp--completing-read
    "Select runnable:"
    (if lsp-rust-analyzer--last-runnable
-       (cons lsp-rust-analyzer--last-runnable (lsp-rust-analyzer--runnables))
+       (cons lsp-rust-analyzer--last-runnable
+             (-remove (-lambda ((&rust-analyzer:Runnable :label))
+                        (equal label (lsp-get lsp-rust-analyzer--last-runnable :label)))
+                      (lsp-rust-analyzer--runnables)))
      (lsp-rust-analyzer--runnables))
-   (-lambda ((&hash "label")) label)))
+   (-lambda ((&rust-analyzer:Runnable :label)) label)))
 
 (defun lsp-rust-analyzer-run (runnable)
+  "Select and run a runnable action."
   (interactive (list (lsp-rust-analyzer--select-runnable)))
-  (-let* (((&hash "env" "bin" "args" "extraArgs" "label") runnable)
-          (compilation-environment (-map (-lambda ((k v)) (concat k "=" v)) (ht-items env))))
-    (compilation-start
-     (string-join (append (list bin) args (when extraArgs '("--")) extraArgs '()) " ")
-     ;; cargo-process-mode is nice, but try to work without it...
-     (if (functionp 'cargo-process-mode) 'cargo-process-mode nil)
-     (lambda (_) (concat "*" label "*")))
-    (setq lsp-rust-analyzer--last-runnable runnable)))
+  (-let* (((&rust-analyzer:Runnable :kind :label :args) runnable)
+          ((&rust-analyzer:RunnableArgs :cargo-args :executable-args :workspace-root?) args)
+          (default-directory (or workspace-root? default-directory)))
+    (if (not (string-equal kind "cargo"))
+        (lsp--error "'%s' runnable is not supported" kind)
+      (compilation-start
+       (string-join (append (list "cargo") cargo-args (when executable-args '("--")) executable-args '()) " ")
+       ;; cargo-process-mode is nice, but try to work without it...
+       (if (functionp 'cargo-process-mode) 'cargo-process-mode nil)
+       (lambda (_) (concat "*" label "*")))
+      (setq lsp-rust-analyzer--last-runnable runnable))))
 
 (defun lsp-rust-analyzer-rerun (&optional runnable)
   (interactive (list (or lsp-rust-analyzer--last-runnable
                          (lsp-rust-analyzer--select-runnable))))
   (lsp-rust-analyzer-run (or runnable lsp-rust-analyzer--last-runnable)))
 
+;; goto parent module
+(cl-defun lsp-rust-find-parent-module (&key display-action)
+  "Find parent module of current module."
+  (interactive)
+  (lsp-find-locations "experimental/parentModule" nil :display-action display-action))
+
 (provide 'lsp-rust)
 ;;; lsp-rust.el ends here
-
-;; Local Variables:
-;; flycheck-disabled-checkers: (emacs-lisp-checkdoc)
-;; End:

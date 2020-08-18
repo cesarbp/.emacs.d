@@ -24,6 +24,7 @@
 
 ;;; Code:
 
+(require 'lsp-protocol)
 (require 'lsp-mode)
 
 (defgroup lsp-css nil
@@ -223,21 +224,29 @@ server."
    ("css.completion.triggerPropertyValueCompletion" lsp-css-completion-trigger-property-value-completion t)
    ("css.experimental.customData" lsp-css-experimental-custom-data)))
 
+(defun lsp-css--server-command ()
+  "Generate startup command for CSS language server."
+  (list (lsp-package-path 'css-languageserver) "--stdio"))
+
 ;;; CSS
-(defun lsp-clients-css--apply-code-action (action)
+(lsp-defun lsp-css--apply-code-action ((&Command :arguments?))
   "Apply ACTION as workspace edit command."
-  (lsp--apply-text-edits (cl-caddr (gethash "arguments" action))))
+  (lsp--apply-text-edits (cl-caddr arguments?)))
+
+(lsp-dependency 'css-languageserver
+                '(:system "css-languageserver")
+                '(:npm :package "vscode-css-languageserver-bin"
+                       :path "css-languageserver"))
 
 (lsp-register-client
- (make-lsp-client :new-connection (lsp-stdio-connection '("css-languageserver" "--stdio"))
-                  :major-modes '(css-mode less-mode less-css-mode sass-mode scss-mode)
-                  :priority -1
-                  :action-handlers (lsp-ht ("_css.applyCodeAction" #'lsp-clients-css--apply-code-action))
-                  :server-id 'css-ls))
+ (make-lsp-client
+  :new-connection (lsp-stdio-connection #'lsp-css--server-command)
+  :major-modes '(css-mode less-mode less-css-mode sass-mode scss-mode)
+  :priority -1
+  :action-handlers (lsp-ht ("_css.applyCodeAction" #'lsp-css--apply-code-action))
+  :server-id 'css-ls
+  :download-server-fn (lambda (_client callback error-callback _update?)
+                        (lsp-package-ensure 'css-languageserver callback error-callback))))
 
 (provide 'lsp-css)
 ;;; lsp-css.el ends here
-
-;; Local Variables:
-;; flycheck-disabled-checkers: (emacs-lisp-checkdoc)
-;; End:

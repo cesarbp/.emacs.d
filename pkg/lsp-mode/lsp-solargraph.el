@@ -109,6 +109,27 @@
   :group 'lsp-solargraph
   :package-version '(lsp-mode . "6.1"))
 
+(defcustom lsp-solargraph-multi-root t
+  "If non nil, `solargraph' will be started in multi-root mode."
+  :type 'boolean
+  :safe #'booleanp
+  :group 'lsp-solargraph
+  :package-version '(lsp-mode . "6.3"))
+
+(defcustom lsp-solargraph-library-directories
+  '("~/.rbenv/" "/usr/lib/ruby/" "~/.rvm/" "~/.gem/")
+  "List of directories which will be considered to be libraries."
+  :type '(repeat string)
+  :group 'lsp-solargraph
+  :package-version '(lsp-mode . "7.0.1"))
+
+(defun lsp-solargraph--build-command ()
+  "Build solargraph command"
+  (let ((lsp-command '("solargraph" "stdio")))
+    (if lsp-solargraph-use-bundler
+              (append '("bundle" "exec") lsp-command)
+            lsp-command)))
+
 (lsp-register-custom-settings
  '(("solargraph.logLevel" lsp-solargraph-log-level)
    ("solargraph.folding" lsp-solargraph-folding t)
@@ -125,24 +146,18 @@
 
 ;; Ruby
 (lsp-register-client
- (let ((lsp-command '("solargraph" "stdio")))
-   (make-lsp-client
-    :new-connection (lsp-stdio-connection
-                     (if lsp-solargraph-use-bundler
-                         (append '("bundle" "exec") lsp-command)
-                       lsp-command))
-    :major-modes '(ruby-mode enh-ruby-mode)
-    :priority -1
-    :multi-root t
-    :server-id 'ruby-ls
-    :initialized-fn (lambda (workspace)
-                      (with-lsp-workspace workspace
-                        (lsp--set-configuration
-                         (lsp-configuration-section "solargraph")))))))
+ (make-lsp-client
+  :new-connection (lsp-stdio-connection
+                   #'lsp-solargraph--build-command)
+  :major-modes '(ruby-mode enh-ruby-mode)
+  :priority -1
+  :multi-root lsp-solargraph-multi-root
+  :library-folders-fn (lambda (_workspace) lsp-solargraph-library-directories)
+  :server-id 'ruby-ls
+  :initialized-fn (lambda (workspace)
+                    (with-lsp-workspace workspace
+                      (lsp--set-configuration
+                       (lsp-configuration-section "solargraph"))))))
 
 (provide 'lsp-solargraph)
 ;;; lsp-solargraph.el ends here
-
-;; Local Variables:
-;; flycheck-disabled-checkers: (emacs-lisp-checkdoc)
-;; End:
