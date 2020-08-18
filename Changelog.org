@@ -3,12 +3,23 @@
 
 * Changelog
 ** current master
+- Published ~treemacs-all-the-icons~
+- Added ~treemacs-workspace-switch-cleanup~
+- Added support for disabling the mode line
+- Added ~treemacs-user-header-line-format~
+- Added ~treemacs-display-current-project-exclusively~
+- Added ~treemacs-icon-catalogue~
+- New icons
+- Bug Fixes
+** v2.8
  - Made workspaces lazy-loaded as needed
  - Published ~treemacs-persp~
  - Added ~treemacs-file-extension-regex~
  - Added ~treemacs-directory-name-transformer~
  - Added ~treemacs-file-name-transformer~
- - More and better icons.
+ - Added ~treemacs-move-forward-on-expand~
+ - Added ~treemacs-user-mode-line-format~
+ - Many more and better icons.
  - Bug fixes
 ** v2.7
  - Suppor for icon themes

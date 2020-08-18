@@ -29,7 +29,9 @@
 (require 'treemacs-icons)
 (require 'treemacs-customization)
 (require 'treemacs-fringe-indicator)
-(eval-and-compile
+(require 'treemacs-logging)
+
+(eval-when-compile
   (require 'inline)
   (require 'treemacs-macros))
 
@@ -82,7 +84,7 @@
                  (put-text-property pos (1+ pos) 'display img-selected)
                  (setq treemacs--last-highlight btn))))))
       (error
-       (treemacs-log "Error on highlight, this shouldn't happen: %s" e)))))
+       (treemacs-log-err "Error on highlight, this shouldn't happen: %s" e)))))
 
 (defun treemacs--pulse-png-advice (&rest _)
   "Make sure icons' background are pusled alongside the entire line."
@@ -122,7 +124,7 @@ Optionally issue a log statment with LOG-ARGS."
 Optionally issue a log statment with LOG-ARGS."
   (declare (indent 1))
   (when log-args
-    (treemacs-log (apply #'format log-args)))
+    (treemacs-log-failure (apply #'format log-args)))
   (when treemacs-pulse-on-failure
     (treemacs--do-pulse 'treemacs-on-failure-pulse-face)))
 

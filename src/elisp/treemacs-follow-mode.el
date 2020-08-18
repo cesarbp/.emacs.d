@@ -29,7 +29,8 @@
 (require 'treemacs-dom)
 (require 'treemacs-async)
 (require 'treemacs-core-utils)
-(eval-and-compile
+
+(eval-when-compile
   (require 'treemacs-macros))
 
 (treemacs-import-functions-from "dired"
@@ -46,7 +47,7 @@ functions.")
 
 (defun treemacs--follow ()
   "Move point to the current file in the treemacs buffer.
-Expand directories if needed. Do nothing if current file does not exist in the
+Expand directories if needed.  Do nothing if current file does not exist in the
 file system or is not below current treemacs root or if the treemacs buffer is
 not visible."
   ;; Treemacs selecting files with `ace-window' results in a large amount of

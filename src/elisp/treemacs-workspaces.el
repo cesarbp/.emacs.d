@@ -26,9 +26,13 @@
 (require 'treemacs-core-utils)
 (require 'treemacs-dom)
 (require 'treemacs-scope)
-(eval-and-compile
+
+(eval-when-compile
+  (require 'cl-lib)
   (require 'inline)
   (require 'treemacs-macros))
+
+(cl-declaim (optimize (speed 3) (safety 0)))
 
 (treemacs-import-functions-from "treemacs"
   treemacs-select-window)
@@ -54,11 +58,20 @@
   treemacs--forget-last-highlight
   treemacs-pulse-on-failure)
 
-(treemacs--defstruct treemacs-project name path path-status)
+(cl-defstruct (treemacs-project
+               (:conc-name treemacs-project->)
+               (:constructor treemacs-project->create!))
+  name
+  path
+  path-status)
 
-(treemacs--defstruct treemacs-workspace name projects)
+(cl-defstruct (treemacs-workspace
+               (:conc-name treemacs-workspace->)
+               (:constructor treemacs-workspace->create!))
+  name
+  projects)
 
-(defvar treemacs--workspaces (list (make-treemacs-workspace :name "Default")))
+(defvar treemacs--workspaces (list (treemacs-workspace->create! :name "Default")))
 
 (defvar treemacs--find-user-project-functions (list #'treemacs--default-current-user-project-function)
   "List of functions to find the user project for the current buffer.")
@@ -94,33 +107,31 @@ To be called whenever a project or workspace changes."
   (declare (side-effect-free t))
   (inline-quote treemacs--workspaces))
 
-(define-inline treemacs-current-workspace ()
+(defun treemacs-current-workspace ()
   "Get the current workspace.
 The return value can be overriden by let-binding `treemacs-override-workspace'.
 This will happen when using `treemacs-run-in-every-buffer' to make sure that
 this function returns the right workspace for the iterated-over buffers.
 
 If no workspace is assigned to the current scope the persisted workspaces will
-be loaded and a workspace will be found based on the `currebt-buffer'.
+be loaded and a workspace will be found based on the `current-buffer'.
 
 This function can be used with `setf'."
-  (declare (side-effect-free t))
-  (inline-quote
-   (or treemacs-override-workspace
-       (-if-let (shelf (treemacs-current-scope-shelf))
-           (treemacs-scope-shelf->workspace shelf)
-         (treemacs--maybe-load-workspaces)
-         (let* ((workspace (treemacs--find-workspace (buffer-file-name (current-buffer))))
-                (new-shelf (make-treemacs-scope-shelf :workspace workspace)))
-           (setf (treemacs-current-scope-shelf) new-shelf)
-           (run-hook-with-args treemacs-workspace-first-found-functions
-                               workspace (treemacs-current-scope))
-           workspace)))))
+  (or treemacs-override-workspace
+      (-if-let (shelf (treemacs-current-scope-shelf))
+          (treemacs-scope-shelf->workspace shelf)
+        (treemacs--maybe-load-workspaces)
+        (let* ((workspace (treemacs--find-workspace (buffer-file-name (current-buffer))))
+               (new-shelf (treemacs-scope-shelf->create! :workspace workspace)))
+          (setf (treemacs-current-scope-shelf) new-shelf)
+          (run-hook-with-args treemacs-workspace-first-found-functions
+                              workspace (treemacs-current-scope))
+          workspace))))
 
 (gv-define-setter treemacs-current-workspace (val)
   `(let ((shelf (treemacs-current-scope-shelf)))
      (unless shelf
-       (setf shelf (make-treemacs-scope-shelf))
+       (setf shelf (treemacs-scope-shelf->create!))
        (push (cons (treemacs-current-scope) shelf) treemacs--scope-storage))
      (setf (treemacs-scope-shelf->workspace shelf) ,val)))
 
@@ -297,7 +308,7 @@ Return values may be as follows:
      (-when-let (ws (--first (string= name (treemacs-workspace->name it))
                              treemacs--workspaces))
        (treemacs-return `(duplicate-name ,ws)))
-     (-let [workspace (make-treemacs-workspace :name name)]
+     (-let [workspace (treemacs-workspace->create! :name name)]
        (add-to-list 'treemacs--workspaces workspace :append)
        (treemacs--persist)
        (run-hook-with-args 'treemacs-create-workspace-functions workspace)
@@ -412,7 +423,7 @@ Does not verify the readability - the cached state is used."
   (declare (side-effect-free t))
   (inline-quote (eq (treemacs-project->path-status ,self) 'local-readable)))
 
-(defun treemacs-do-add-project-to-workspace (path &optional name)
+(defun treemacs-do-add-project-to-workspace (path name)
   "Add project at PATH to the current workspace.
 NAME is provided during ad-hoc navigation only.
 Return values may be as follows:
@@ -443,17 +454,16 @@ NAME: String"
      `(invalid-path "Path is nil."))
    (let ((path-status (treemacs--get-path-status path)))
      (treemacs-error-return-if (not (file-readable-p path))
-       `(invalid-path "Path does not exist."))
+       `(invalid-path "Path is not readable does not exist."))
      (setq path (-> path (file-truename) (treemacs--canonical-path)))
      (-when-let (project (treemacs--find-project-for-path path))
        (treemacs-return `(duplicate-project ,project)))
+     (treemacs-return-if (treemacs--is-name-invalid? name)
+       `(invalid-name ,name))
      (-when-let (project (--first (treemacs-is-path (treemacs-project->path it) :in path)
                                   (treemacs-workspace->projects (treemacs-current-workspace))))
        (treemacs-return `(includes-project ,project)))
-     (let* ((name (or name (read-string "Project Name: " (treemacs--filename path))))
-            (project (make-treemacs-project :name name :path path :path-status path-status)))
-       (treemacs-return-if (treemacs--is-name-invalid? name)
-         `(invalid-name ,name))
+     (let ((project (treemacs-project->create! :name name :path path :path-status path-status)))
        (-when-let (double (--first (string= name (treemacs-project->name it))
                                    (treemacs-workspace->projects (treemacs-current-workspace))))
          (treemacs-return `(duplicate-name ,double)))
@@ -478,7 +488,7 @@ NAME: String"
            (treemacs--insert-root-separator)))
          (treemacs--add-root-element project)
          (treemacs-dom-node->insert-into-dom!
-          (make-treemacs-dom-node :key path :position (treemacs-project->position project)))))
+          (treemacs-dom-node->create! :key path :position (treemacs-project->position project)))))
        (treemacs--persist)
        (run-hook-with-args 'treemacs-create-project-functions project)
        `(success ,project)))))
@@ -487,53 +497,82 @@ NAME: String"
 (with-no-warnings
   (make-obsolete #'treemacs-add-project-at #'treemacs-do-add-project-to-workspace "v.2.2.1"))
 
-(defun treemacs-do-remove-project-from-workspace (project)
+(defun treemacs-do-remove-project-from-workspace (project &optional ignore-last-project-restriction)
   "Add the given PROJECT to the current workspace.
 
-PROJECT: Project Struct"
-  (treemacs-run-in-every-buffer
-   (treemacs-with-writable-buffer
-    (let* ((project-pos (goto-char (treemacs-project->position project)))
-           (prev-project-pos (move-marker (make-marker) (treemacs--prev-project-pos)))
-           (next-project-pos (move-marker (make-marker) (treemacs--next-project-pos))))
-      (when (treemacs-project->is-expanded? project)
-        (treemacs--collapse-root-node project-pos t))
-      (treemacs--remove-project-from-current-workspace project)
-      (treemacs--invalidate-buffer-project-cache)
-      (let ((previous-button (previous-button project-pos))
-            (next-button (next-button project-pos)))
-        (cond
-         ;; Previous button exists. Delete from the end of the current line to
-         ;; the end of the previous button's line. If the `treemacs--projects-end'
-         ;; is at the EOL of the  it will move to EOL of the previous button.
-         (previous-button
-          (delete-region (treemacs-button-end previous-button) (point-at-eol))
-          (when next-button (forward-button 1)))
-         ;; Previous project does not exist, but a next button exists. Delete from
-         ;; BOL to the start of the next buttons line.
-         (next-button
-          (when (> next-button (treemacs--projects-end))
-            ;; The first item after the deletion will be bottom extensions. Project
-            ;; end will be at its BOL, making it move upon expand/collapse. Lock the marker.
-            (set-marker-insertion-type (treemacs--projects-end) nil))
-          (delete-region (point-at-bol) (progn (goto-char next-button) (forward-line 0) (point))))
+PROJECT may either be a `treemacs-project' instance or a string path.  In the
+latter case the project containing the path will be selected.
 
-         ;; Neither the previous nor the next button exists. Simply delete the
-         ;; current line.
-         (t
-          (delete-region (point-at-bol) (point-at-eol)))))
-      (if (equal (point-min) prev-project-pos)
-          (goto-char next-project-pos)
-        (goto-char prev-project-pos)))
+When IGNORE-LAST-PROJECT-RESTRICTION removing the last project will not count
+as an error.  This is meant to be used in non-interactive code, where another
+project is immediately added afterwards, as leaving the project list empty is
+probably a bad idea.
 
-    (treemacs--forget-last-highlight)
-    (--when-let (treemacs-get-local-window)
-      (with-selected-window it
-        (recenter)))
-    (treemacs--evade-image)
-    (hl-line-highlight)))
-  (run-hook-with-args 'treemacs-delete-project-functions project)
-  (treemacs--persist))
+Return values may be as follows:
+
+* If the given path is invalid (is nil or does not exist):
+  - the symbol `invalid-project'
+  - a string describing the problem
+* If there is only one project:
+  - the symbol `cannot-delete-last-project'
+* If everything went well:
+  - the symbol `success'"
+  (treemacs-block
+   (unless ignore-last-project-restriction
+     (treemacs-error-return-if (>= 1 (length (treemacs-workspace->projects (treemacs-current-workspace))))
+       'cannot-delete-last-project))
+   (treemacs-error-return-if (null project)
+     `(invalid-project "Project is nil"))
+   ;; when used from outside treemacs it is much easier to supply a path string than to
+   ;; look up the project instance
+   (when (stringp project)
+     (setf project (treemacs-is-path (treemacs--canonical-path project) :in-workspace)))
+   (treemacs-error-return-if (null project)
+     `(invalid-project "Given path is not in the workspace"))
+   (treemacs-run-in-every-buffer
+    (treemacs-with-writable-buffer
+     (let* ((project-path (treemacs-project->path project))
+            (project-pos (goto-char (treemacs-project->position project-path)))
+            (prev-project-pos (move-marker (make-marker) (treemacs--prev-project-pos)))
+            (next-project-pos (move-marker (make-marker) (treemacs--next-project-pos))))
+       (when (treemacs-project->is-expanded? project)
+         (treemacs--collapse-root-node project-pos t))
+       (treemacs--remove-project-from-current-workspace project)
+       (treemacs--invalidate-buffer-project-cache)
+       (let ((previous-button (previous-button project-pos))
+             (next-button (next-button project-pos)))
+         (cond
+          ;; Previous button exists. Delete from the end of the current line to
+          ;; the end of the previous button's line. If the `treemacs--projects-end'
+          ;; is at the EOL of the  it will move to EOL of the previous button.
+          (previous-button
+           (delete-region (treemacs-button-end previous-button) (point-at-eol))
+           (when next-button (forward-button 1)))
+          ;; Previous project does not exist, but a next button exists. Delete from
+          ;; BOL to the start of the next buttons line.
+          (next-button
+           (when (> next-button (treemacs--projects-end))
+             ;; The first item after the deletion will be bottom extensions. Project
+             ;; end will be at its BOL, making it move upon expand/collapse. Lock the marker.
+             (set-marker-insertion-type (treemacs--projects-end) nil))
+           (delete-region (point-at-bol) (progn (goto-char next-button) (forward-line 0) (point))))
+
+          ;; Neither the previous nor the next button exists. Simply delete the
+          ;; current line.
+          (t
+           (delete-region (point-at-bol) (point-at-eol)))))
+       (if (equal (point-min) prev-project-pos)
+           (goto-char next-project-pos)
+         (goto-char prev-project-pos)))
+     (treemacs--forget-last-highlight)
+     (--when-let (treemacs-get-local-window)
+       (with-selected-window it
+         (recenter)))
+     (treemacs--evade-image)
+     (hl-line-highlight)))
+   (run-hook-with-args 'treemacs-delete-project-functions project)
+   (treemacs--persist)
+   'success))
 
 (defun treemacs-do-switch-workspace ()
   "Switch to a new workspace.
@@ -544,6 +583,7 @@ Return values may be as follows:
 * If everything went well:
   - the symbol `success'
   - the selected workspace"
+  (treemacs--maybe-load-workspaces)
   (treemacs-block
    (treemacs-return-if (= 1 (length treemacs--workspaces))
      'only-one-workspace)
@@ -623,7 +663,7 @@ PROJECT: Project Struct"
    (let* ((current-file (--when-let (treemacs-current-button) (treemacs--nearest-path it)))
           (current-workspace (treemacs-current-workspace))
           ;; gather both the projects actually in the workspace ...
-          (projects-in-workspace (-> current-workspace (treemacs-workspace->projects)))
+          (projects-in-workspace (treemacs-workspace->projects current-workspace))
           (projects-in-buffer)
           (expanded-projects-in-buffer))
      (goto-char 0)
@@ -644,11 +684,9 @@ PROJECT: Project Struct"
            (treemacs--collapse-root-node project-btn))))
      ;; figure out which ones have been deleted and and remove them from the dom
      (dolist (project-in-buffer projects-in-buffer)
-       (unless (--first (treemacs-is-path (treemacs-project->path project-in-buffer)
-                                          :same-as
-                                          (treemacs-project->path it))
-                        projects-in-workspace)
+       (unless (treemacs-is-path (treemacs-project->path project-in-buffer) :in-workspace current-workspace)
          (treemacs-on-collapse (treemacs-project->path project-in-buffer) :purge)
+         (ht-remove! treemacs-dom (treemacs-project->path project-in-buffer))
          (setf projects-in-buffer (delete project-in-buffer projects-in-buffer))))
      (treemacs-with-writable-buffer
       (treemacs--forget-last-highlight)
@@ -708,6 +746,7 @@ PROJECT: Project Struct"
 
 (defun treemacs--select-workspace-by-name (&optional name)
   "Interactivly select the workspace with the given NAME."
+  (treemacs--maybe-load-workspaces)
   (-let [name (or name
                    (completing-read
                     "Workspace: "
@@ -715,6 +754,29 @@ PROJECT: Project Struct"
                          (--map (cons (treemacs-workspace->name it) it)))))]
     (--first (string= name (treemacs-workspace->name it))
              treemacs--workspaces)))
+
+(defun treemacs--maybe-clean-buffers-on-workspace-switch (which)
+  "Delete buffers depending on the value of WHICH.
+
+ - When it is nil do nothing.
+ - When it is `files' delete all buffers visiting files.
+ - When it is `all' delete all buffers
+
+In any case treemacs itself, and the scratch and messages buffers will be left
+alive."
+  (when which
+    (let* ((scratch (get-buffer-create "*scratch*"))
+           (messages (get-buffer "*Messages*"))
+           (no-delete-test
+            (pcase which
+              ('files (lambda (b) (null (buffer-file-name b))))
+              ('all (lambda (_) nil)))))
+      (dolist (buffer (buffer-list))
+        (unless (or (eq t (buffer-local-value 'treemacs--in-this-buffer buffer))
+                    (eq buffer scratch)
+                    (eq buffer messages)
+                    (funcall no-delete-test buffer))
+          (kill-buffer buffer))))))
 
 (provide 'treemacs-workspaces)
 

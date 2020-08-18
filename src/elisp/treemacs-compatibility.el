@@ -23,10 +23,13 @@
 
 (require 'dash)
 (require 'treemacs-customization)
+(require 'treemacs-logging)
 (require 'treemacs-scope)
 (require 'treemacs-core-utils)
 (require 'treemacs-interface)
-(eval-and-compile (require 'treemacs-macros))
+
+(eval-when-compile
+  (require 'treemacs-macros))
 
 (treemacs-only-during-init
  ;; make sure frame params are not persisted by desktop-save-mode
@@ -51,7 +54,7 @@
 
 (with-eval-after-load 'persp-mode
   (defun treemacs--remove-treemacs-window-in-new-frames (persp-activated-for)
-    (when (or t(eq persp-activated-for 'frame))
+    (when (eq persp-activated-for 'frame)
       (-when-let (w (--first (treemacs-is-treemacs-window? it)
                              (window-list)))
         (unless (assoc (treemacs-scope->current-scope treemacs--current-scope-type) treemacs--scope-storage)
@@ -59,12 +62,23 @@
   (declare-function treemacs--remove-treemacs-window-in-new-frames "treemacs-compatibility")
   (if (boundp 'persp-activated-functions)
       (add-to-list 'persp-activated-functions #'treemacs--remove-treemacs-window-in-new-frames)
-    (treemacs-log "`persp-activated-functions' not defined - couldn't add compatibility.")))
+    (treemacs-log-failure "`persp-activated-functions' not defined - couldn't add compatibility.")))
+
+(with-eval-after-load 'perspective
+  (defun treemacs--remove-treemacs-window-in-new-frames (&rest _)
+    (-when-let (w (--first (treemacs-is-treemacs-window? it)
+                           (window-list)))
+      (unless (assoc (treemacs-scope->current-scope treemacs--current-scope-type) treemacs--scope-storage)
+        (delete-window w))))
+  (declare-function treemacs--remove-treemacs-window-in-new-frames "treemacs-compatibility")
+  (if (boundp 'persp-activated-hook)
+      (add-to-list 'persp-activated-hook #'treemacs--remove-treemacs-window-in-new-frames)
+    (treemacs-log-failure "`persp-activated-hook' not defined - couldn't add compatibility.")))
 
 (defun treemacs--split-window-advice (original-split-function &rest args)
   "Advice to make sure window splits are sized correctly with treemacs.
 This will treat the treemacs window as a side-window for the duration of the
-split, calling the ORIGINAL-SPLIT-FUNCTION with its ARGS. This prevents the
+split, calling the ORIGINAL-SPLIT-FUNCTION with its ARGS.  This prevents the
 calculations in `split-window-right' from outputting the wrong result for the
 width of the new window when the treemacs window is visible."
   (-let [w (treemacs-get-local-window)]
@@ -92,28 +106,6 @@ width of the new window when the treemacs window is visible."
     (if (fboundp 'org-link-set-parameters)
         (org-link-set-parameters "treemacs" :store #'treemacs-store-org-link)
       (add-hook 'org-store-link-functions #'treemacs-store-org-link))))
-
-(with-eval-after-load 'which-key
-
-  (defun treemacs--fix-width-after-which-key (func &rest args)
-      "Advice to sure treemacs' window size stays put when which-key is active.
-  Wraps original FUNC + ARGS."
-      (let* ((window (treemacs-get-local-window))
-             (should-toggle (and (with-no-warnings (which-key--popup-showing-p))
-                                 (when window
-                                   (not (buffer-local-value 'treemacs--width-is-locked
-                                                            (window-buffer window))))))
-             (treemacs--no-messages t))
-        (when should-toggle
-          (with-selected-window window
-            (treemacs-toggle-fixed-width)))
-        (apply func args)
-        (when should-toggle
-          (with-selected-window window
-            (treemacs-toggle-fixed-width)))))
-
-  (advice-add 'which-key--update :around 'treemacs--fix-width-after-which-key)
-  (advice-add 'which-key--hide-buffer-side-window :around 'treemacs--fix-width-after-which-key))
 
 (with-eval-after-load 'evil-escape
   (when (boundp 'evil-escape-excluded-major-modes)
