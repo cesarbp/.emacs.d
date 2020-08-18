@@ -5,9 +5,6 @@ https://github.com/jwiegley/use-package 2.3
 https://github.com/technomancy/better-defaults master
 https://github.com/nonsequitur/smex 3.0
 https://github.com/DarwinAwardWinner/ido-completing-read-plus v4.11
-https://github.com/magit/with-editor v2.7.2
-https://github.com/magit/ghub v2.0.0
-https://github.com/magit/magit-popup v2.12.0
 https://github.com/jwiegley/emacs-async v1.9.3
 http://mumble.net/~campbell/git/paredit.git/ master
 https://github.com/nonsequitur/idle-highlight-mode 1.1.3
