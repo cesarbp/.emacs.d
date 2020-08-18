@@ -131,6 +131,7 @@
 ;; LOAD_PATH += -L ~/.emacs.d/pkg/with-editor
 ;; LOAD_PATH += -L ~/.emacs.d/pkg/magit-popup
 ;; LOAD_PATH += -L ~/.emacs.d/pkg/ghub
+;; LOAD_PATH += -L ~/.emacs.d/pkg/treepy.el
 ;; And then run `make` inside magit's directory
 (when (file-exists-p (concat emacs-pkg-dir "/magit/lisp/magit-autoloads.el"))
   (load (concat emacs-pkg-dir "/magit/lisp/magit-autoloads.el")))
