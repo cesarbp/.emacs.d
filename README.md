@@ -25,7 +25,7 @@
 
 # Introduction
 `rust-mode` makes editing [Rust](http://rust-lang.org) code with Emacs
-enjoyable. It requires Emacs 24 or later, and is include in both
+enjoyable. It requires Emacs 25 or later, and is included in both
 [Emacs Prelude](https://github.com/bbatsov/prelude) and
 [Spacemacs](https://github.com/syl20bnr/spacemacs) by default.
 
@@ -35,7 +35,7 @@ This mode provides:
 - Integration with Cargo, clippy and rustfmt
 
 This mode does _not_ provide autocompletion, or jumping to function /
-trait definitions. See [Integration with Rust Language Server](#rust-language-server)
+trait definitions. See [Auto-completion / code navigation](#auto-completion--code-navigation)
 below for tips on how to enable this.
 
 
@@ -70,7 +70,7 @@ Clone this repository locally, and add this to your init.el:
 
 # Feature guide
 ## Indentation
-Commands like <TAB> should indent correctly.
+Commands like <kbd>TAB</kbd> should indent correctly.
 
 The Rust style guide recommends spaces rather than tabs for
 indentation; to follow the recommendation add this to your init.el,
@@ -85,7 +85,7 @@ which forces indentation to always use spaces.
 
 The `rust-format-buffer` function will format your code with
 [rustfmt](https://github.com/rust-lang/rustfmt) if installed. By
-default, this is bound to `C-c C-f`.
+default, this is bound to <kbd>C-c C-f</kbd>.
 
 The variable `rust-format-on-save` enables automatic formatting on
 save. For example, add the following in your init.el to enable format
@@ -97,7 +97,7 @@ on save:
 
 ## Running / testing / compiling code
 
-The `rust-run`, `rust-test` and `rust-build` functions shell out to
+The `rust-run`, `rust-test` and `rust-compile` functions shell out to
 Cargo to run, test or build your code. Under the hood, these use the
 standard Emacs `compile` function.
 
@@ -110,14 +110,14 @@ you can use the following in your init.el:
 
 ## Clippy
 `rust-run-clippy` runs
-[Clippy](https://github.com/rust-lang/rust-clippy), a linter. 
+[Clippy](https://github.com/rust-lang/rust-clippy), a linter.
 
 ## Easy insertion of !dbg
 `rust-dbg-wrap-or-unwrap` either wraps or unwraps the current region
 in `dbg!`. This can be useful for easily adding debug lines to your
 program.
 
-This is bound to `C-c C-d` by default.
+This is bound to <kbd>C-c C-d</kbd> by default.
 
 
 # Other recommended packages
