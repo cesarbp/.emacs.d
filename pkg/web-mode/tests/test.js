@@ -1,3 +1,30 @@
+
+for ( var someLongVariable = 0; someLongVariable < someExtremely.long.prop;
+  someLongVariable++ )
+{
+  doSomething();
+}
+
+$("input").keypress(function()
+  {
+    var x = 2;
+});
+
+let a;
+if (true) {
+  a = 1;
+} else
+  a = 2;
+
+if (1 === 1)
+{
+  x = 1;
+}
+else
+{
+  x = 2;
+}
+
 while (x) {
   if (true) a()
   b()
@@ -7,6 +34,15 @@ while (x) {
 let newList = list.skipWhile(f)
 a()
 b()
+
+function Switch() {
+  return whatever;
+}
+
+type T = {|
+  x: number,
+  titi: y
+|};
 
 Relay.createContainer(Story, {
   initialVariables: {
@@ -35,6 +71,10 @@ var cs = {completed: this.props.todo.completed,
 
 const f = (x) =>
   x + 1;
+
+const tptp =  bar > baz ?
+                    value1 :
+                    value2;
 
 if (a)
   if (b)
@@ -198,7 +238,11 @@ function onYouTubePlayerAPIReady(videoid) {
   ytPlayer = new YT.Player('media_area',
                            {videoId: videoid,
                             playerVars: { 'rel': 0 }
-                           });
+  });
+  ytPlayer = new YT.Player('media_area', {
+    videoId: videoid,
+    playerVars: { 'rel': 0 }
+  });
 }
 
 var newB = new example();
@@ -220,7 +264,7 @@ foo() {
     hello();
 }
 
-function fieldIsValid( field, fieldSpec) {
+function fieldIsValid(field, fieldSpec) {
   // todo: add remote possibility
   var value = field.value;
   if ( value.length < fieldSpec.minNumberOfChar ||

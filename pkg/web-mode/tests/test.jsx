@@ -15,6 +15,43 @@ React.createClass({
   }
 });
 
+function hello() {
+
+  return (
+    <div>
+      {active ? (
+        <div></div>
+      ) : (
+        <span></span>
+      )}
+    </div>
+  )
+
+}
+
+function hello() {
+
+  return (
+    <input
+      type="file"
+      ref={component => {
+        this.inputFile = component;
+      }}
+    />
+  );
+}
+
+export default function Example() {
+  return (
+    <Menu>
+      <Menu.Item>
+        ← cursor here
+      </Menu.Item>
+    </Menu>
+  );
+}
+
+
 render() {
   return (
     <>
@@ -226,10 +263,10 @@ class Confirm extends Component {
       <form onSubmit="">
         <fieldset>
           {project.foo && (
-             <div>Foo</div>
+            <div>Foo</div>
           )}
           {project.bar && (
-             <p>Bar</p>
+            <p>Bar</p>
           )}
         </fieldset>
       </form>
@@ -415,7 +452,7 @@ React.createClass({
         { this.props.list.map(function(element) {
             var x = 1;
             return <li class="dxs" x="xs">{ "aa" + this.getModel().get('bb') }</li>
-          }) } cqsdc { return "cd"; }
+        }) } cqsdc { return "cd"; }
       </ul>
     )
   }
