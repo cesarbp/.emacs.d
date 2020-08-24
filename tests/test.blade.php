@@ -1,10 +1,16 @@
 <div>
 
+  <span>@lang('consumption.this_month')</span>
+
   Hello, {!! $name !!}.
 
   {{ isset($name) ? $name : 'Default' }}
 
   @{{ This will not be processed by Blade }}
+
+  @component
+    toto
+  @endcomponent
 
   {{-- This comment will not be in the rendered HTML --}}
 
@@ -45,3 +51,5 @@
   @show
 
 </div>
+
+<span>@choice('foo', 2)</span>
