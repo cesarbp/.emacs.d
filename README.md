@@ -10,7 +10,7 @@ https://github.com/technomancy/emacs-starter-kit
 
 # Requirements
 
-Works with emacs 26.3
+Works with emacs 27.1
 
 # Installation
 
@@ -27,6 +27,7 @@ Create a file ~/.emacs.d/pkg/magit/config.mk with the contents:
     LOAD_PATH += -L ~/.emacs.d/pkg/with-editor
     LOAD_PATH += -L ~/.emacs.d/pkg/magit-popup
     LOAD_PATH += -L ~/.emacs.d/pkg/ghub
+    LOAD_PATH += -L ~/.emacs.d/pkg/treepy.el
 
 Then run `make` inside that same directory
 
@@ -47,7 +48,7 @@ anaconda to work well.
 
 ## Rust
 
-Works with rust-src
+Hmm..
 
 # Usage
 
