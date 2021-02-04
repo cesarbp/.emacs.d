@@ -182,3 +182,10 @@ from the queue. The queue itself is not modified."
 ;; 
 ;; 	Add queue.el
 ;; 
+
+
+
+(provide 'queue)
+
+
+;;; queue.el ends here
