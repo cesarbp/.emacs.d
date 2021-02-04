@@ -60,9 +60,6 @@
           (byte-compile-file f))
         (update-directory-autoloads d)))))
 
-(when (not (file-exists-p autoloads-file))
-  (reinit-pkgs)
-  )
 
 (add-to-list 'load-path emacs-pkg-dir)
 
@@ -72,6 +69,10 @@
 
 (mapc 'load (directory-files (concat user-emacs-directory "cbp")
                              t "^[^#].*el$"))
+
+(when (not (file-exists-p autoloads-file))
+  (reinit-pkgs)
+  )
 
 ;;; --- Packages --- ;;;
 
