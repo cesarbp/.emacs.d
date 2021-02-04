@@ -63,8 +63,6 @@
 
 (add-to-list 'load-path emacs-pkg-dir)
 
-(load autoloads-file)
-
 (require 'better-defaults)
 
 (mapc 'load (directory-files (concat user-emacs-directory "cbp")
@@ -73,6 +71,8 @@
 (when (not (file-exists-p autoloads-file))
   (reinit-pkgs)
   )
+
+(load autoloads-file)
 
 ;;; --- Packages --- ;;;
 
