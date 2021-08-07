@@ -6,7 +6,7 @@
 ;; Author: Sebastien Chapuis <sebastien@chapu.is>, Fangrui Song <i@maskray.me>
 ;; Keywords: languages, tools
 ;; URL: https://github.com/emacs-lsp/lsp-ui
-;; Package-Requires: ((emacs "26.1") (dash "2.14") (dash-functional "1.2.0") (lsp-mode "6.0") (markdown-mode "2.3"))
+;; Package-Requires: ((emacs "26.1") (dash "2.18.0") (lsp-mode "6.0") (markdown-mode "2.3"))
 ;; Version: 7.0.1
 
 ;;; License
@@ -35,6 +35,15 @@
 
 (require 'dash)
 (require 'lsp-protocol)
+(require 'find-func)
+
+(defconst lsp-ui-resources-dir
+  (--> (find-library-name "lsp-ui")
+       (file-name-directory it)
+       (expand-file-name "resources" it)
+       (file-name-as-directory it)
+       (and (file-directory-p it) it))
+  "Resource folder for package `lsp-ui'.")
 
 (require 'lsp-ui-sideline)
 (require 'lsp-ui-peek)
@@ -59,10 +68,8 @@
   (with-temp-buffer
     (insert string)
     (delay-mode-hooks
-      (let ((inhibit-message t))
-        (funcall major))
-      (ignore-errors
-        (font-lock-ensure)))
+      (let ((inhibit-message t)) (funcall major))
+      (ignore-errors (font-lock-ensure)))
     (buffer-string)))
 
 (defun lsp-ui--workspace-path (path)
