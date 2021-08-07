@@ -1,0 +1,125 @@
+[[https://github.com/emacs-lsp/lsp-python-ms/actions][https://github.com/emacs-lsp/lsp-python-ms/workflows/CI/badge.svg?branch=master]]
+[[http://img.shields.io/:License-BSD3-blue.svg]]
+[[https://melpa.org/#/lsp-python-ms][https://melpa.org/packages/lsp-python-ms-badge.svg]]
+[[https://stable.melpa.org/#/lsp-python-ms][https://stable.melpa.org/packages/lsp-python-ms-badge.svg]]
+
+=lsp-mode= client leveraging Microsoft's [[https://github.com/Microsoft/python-language-server][python-language-server]].
+
+* Installation
+
+Include ~lsp-python-ms~ in the configuration file:
+#+BEGIN_SRC emacs-lisp
+(require 'lsp-python-ms)
+(setq lsp-python-ms-auto-install-server t)
+(add-hook 'python-mode-hook #'lsp) ; or lsp-deferred
+#+END_SRC
+
+A minimal ~use-package~ initialization might be:
+#+BEGIN_SRC elisp
+  (use-package lsp-python-ms
+    :ensure t
+    :init (setq lsp-python-ms-auto-install-server t)
+    :hook (python-mode . (lambda ()
+                            (require 'lsp-python-ms)
+                            (lsp))))  ; or lsp-deferred
+#+END_SRC
+
+** Installing the executable
+
+*** NixOS
+
+Building the executable manually is difficult on NixOS, but it can be easily installed via the package manager.
+At the time of writing (May 2020), it is not available on the 20.03 release, but can be acquired on the unstable branch.
+
+#+begin_src bash
+    nix-channel --add https://nixos.org/channels/nixos-unstable nixos
+    nix-channel --update nixos
+#+end_src
+
+You can then install the executable by running ~nix-env -iA nixpkgs.python-language-server~
+or by adding ~nixpkgs.python-language-server~ to your ~configuration.nix~ and creating a new generation.
+Note that ~python37Packages.python-language-server~ refers to Palintir's language server, not Microsoft's.
+
+Finally, ensure that Emacs knows where to find the executable by setting ~lsp-python-ms-executable~.
+
+#+begin_src elisp
+  (use-package lsp-python-ms
+    :ensure t
+    :hook (python-mode . (lambda ()
+                           (require 'lsp-python-ms)
+                           (lsp)))
+    :init
+    (setq lsp-python-ms-executable (executable-find "python-language-server")))
+
+#+end_src
+
+*** Most other distros
+
+Normally the [[https://github.com/Microsoft/python-language-server][python-language-server]] will be downloaded automatically if it doesn't
+exist while opening the python scripts.
+
+If you have troubles to download the package, you can also build the server yourselves.
+
+1. Install [[https://www.microsoft.com/net/download][dotnet-sdk]]
+2. Clone and build [[https://github.com/Microsoft/python-language-server][python-language-server]]:
+   #+BEGIN_SRC bash
+   git clone https://github.com/Microsoft/python-language-server.git
+   cd python-language-server/src/LanguageServer/Impl
+   dotnet publish -c Release -r osx-x64   # mac
+   #+END_SRC
+
+   Change the ~-r~ flag according to your architecture and operating system.
+   See Microsoft's [[https://docs.microsoft.com/en-us/dotnet/core/rid-catalog][Runtime ID Catalog]] for the right value for your system.
+
+   Then make the binary executable.
+   #+BEGIN_SRC bash
+   chmod a+x $(git rev-parse --show-toplevel)/output/bin/Release/osx-x64/publish/Microsoft.Python.LanguageServer
+   #+END_SRC
+
+   NOTE: on some systems (for example, Fedora), the executable comes out as
+         ~Microsoft.Python.LanguageServer.LanguageServer~.
+
+3. Set executable to ~lsp-python-ms-executable~.
+
+   #+BEGIN_SRC elisp
+   ;; for executable of language server, if it's not symlinked on your PATH
+   (setq lsp-python-ms-executable
+         "~/python-language-server/output/bin/Release/osx-x64/publish/Microsoft.Python.LanguageServer")
+   #+END_SRC
+
+For development, you might find it useful to run =cask install=.
+
+* FAQ
+
+1. Unresolved import warnings
+
+   Set workspace root of `lsp-mode` properly, and add the extra directories to =lsp-python-ms-extra-paths= or =PYTHONPATH=. 
+   Refer to [[https://github.com/microsoft/python-language-server/blob/master/TROUBLESHOOTING.md#unresolved-import-warnings][Troubleshooting - Unresolved import warnings]] and [[https://github.com/emacs-lsp/lsp-python-ms/issues/96][#96]].
+
+2. Autocompletion doesn't work
+
+   The folder may have huge folders and files, and  the server takes a long time to index them. So please DO NOT put huge files in the project/workspace folder.
+
+3. Set path of the Python executable for each project/workspace
+
+   Set the variable =lsp-python-ms-python-executable= before the `lsp-mode` being loaded.
+
+   First, add =hack-local-variables-hook= in `init.el` to achieve loading `lsp-mode` after the `.dir-locals.el` file of each project/workspace being loaded.
+
+   #+BEGIN_SRC emacs-lisp
+     (add-hook 'hack-local-variables-hook
+	       (lambda ()
+		 (when (derived-mode-p 'python-mode)
+		   (require 'lsp-python-ms)
+		   (lsp)))) ; or lsp-deferred
+   #+END_SRC
+
+   Second, create `.dir-locals.el` file in the root directory of project to specify the varibale =lsp-python-ms-python-executable= for the project/workspace.
+
+   #+BEGIN_SRC emacs-lisp
+     ((python-mode . ((lsp-python-ms-python-executable . "/.../bin/python"))))
+   #+END_SRC
+
+* Credit
+
+All credit to [[https://cpbotha.net][cpbotha]] on [[https://vxlabs.com/2018/11/19/configuring-emacs-lsp-mode-and-microsofts-visual-studio-code-python-language-server/][vxlabs]]! This just tidies and packages his work there.
