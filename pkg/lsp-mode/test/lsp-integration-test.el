@@ -30,9 +30,11 @@
 (require 'f)
 
 (require 'lsp-mode)
+(require 'lsp-headerline)
 (require 'lsp-modeline)
 (require 'lsp-completion)
 (require 'lsp-diagnostics)
+(require 'lsp-pyls)
 
 (defconst lsp-test-location (file-name-directory (or load-file-name buffer-file-name)))
 
@@ -124,42 +126,6 @@
                                          find-buffer-visiting
                                          (buffer-local-value 'post-command-hook))))
              (run-hooks 'post-command-hook))))
-       (deferred::nextc (should (equal result :timeout)))
-       (deferred:sync!))))
-
-(ert-deftest lsp-test-current-buffer-mode ()
-  (lsp-with-pyls
-   (-> (lsp-test-wait
-        (eq 'initialized (lsp--workspace-status
-                          (cl-first (lsp-workspaces)))))
-       (deferred::nextc
-         (goto-char (point-min))
-         (search-forward "fn1")
-         (prog1 (deferred:earlier
-                  (lsp-def-request-async "textDocument/hover"
-                                         (lsp--text-document-position-params)
-                                         :mode 'alive)
-                  (deferred::nextc (deferred:wait 1000) :timeout))
-           (kill-buffer (current-buffer))))
-       (deferred::nextc (should (equal result :timeout)))
-       (deferred:sync!))))
-
-(ert-deftest lsp-test-current-buffer-mode ()
-  (lsp-with-pyls
-   (-> (lsp-test-wait
-        (eq 'initialized (lsp--workspace-status
-                          (cl-first (lsp-workspaces)))))
-       (deferred::nextc
-         (goto-char (point-min))
-         (search-forward "fn1")
-         (prog1 (deferred:earlier
-                  (lsp-def-request-async "textDocument/hover"
-                                         (lsp--text-document-position-params)
-                                         :mode 'alive)
-                  (deferred::nextc (deferred:wait 1000) :timeout))
-           (-> (f-join lsp-test-location "fixtures/pyls/test.py")
-               (find-buffer-visiting)
-               (kill-buffer))))
        (deferred::nextc (should (equal result :timeout)))
        (deferred:sync!))))
 

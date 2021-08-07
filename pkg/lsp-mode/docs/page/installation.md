@@ -2,6 +2,7 @@
 
 You need first `lsp-mode`, that is a Emacs client for an LSP server.
 Then you need to install the specific LSP server for your language.
+Finally, call `M-x lsp` or use the corresponding major mode hook to autostart the server.
 
 ## Client
 
@@ -12,6 +13,12 @@ Then you need to install the specific LSP server for your language.
 The recommended way to install `lsp-mode` is via `package.el` - the built-in package manager in Emacs. `lsp-mode` is available on the two major `package.el` community maintained repos - [MELPA Stable](http://stable.melpa.org) and [MELPA](http://melpa.org).
 
 <kbd>M-x</kbd> `package-install` <kbd>RET</kbd> `lsp-mode` <kbd>RET</kbd>
+
+When updating your packages with `package.el`, we recommend the following procedure:
+
+    1. Delete your LSP-related packages
+    2. Restart Emacs
+    3. Install the new versions of the packages.
 
 ### Doom Emacs
 
@@ -55,7 +62,7 @@ You could go minimal and use `lsp-mode` as it is without external packages with 
 (add-hook 'XXX-mode-hook #'lsp)
 ```
 
-Where `XXX` could be major mode like `python`, `java`, `c++`. Alternatively, if you want to minimize you configuration you may use `prog-mode-hook`. In case you do that, `lsp` will try to start for each programming mode and echo a message when there is no client registered for the current mode or if the corresponding server is not present. In addition, `lsp-mode` will automatically detect and configure [lsp-ui](https://emacs-lsp.github.io/lsp-ui) and [company-mode](https://github.com/company-mode/company-mode). To turn off that behavior you could set `lsp-auto-configure` to `nil`.
+Where `XXX` could be major mode like `python`, `java`, `c++`. Alternatively, if you want to minimize your configuration you may use `prog-mode-hook`. In case you do that, `lsp` will try to start for each programming mode and echo a message when there is no client registered for the current mode or if the corresponding server is not present. In addition, `lsp-mode` will automatically detect and configure [lsp-ui](https://emacs-lsp.github.io/lsp-ui) and [company-mode](https://github.com/company-mode/company-mode). To turn off that behavior you could set `lsp-auto-configure` to `nil`.
 
 To defer LSP server startup (and DidOpen notifications) until the buffer is visible you can use `lsp-deferred` instead of `lsp`:
 
@@ -68,15 +75,15 @@ To defer LSP server startup (and DidOpen notifications) until the buffer is visi
 Replace `(require 'lsp-mode)` with the following if you use use-package.
 
 ```elisp
-;; set prefix for lsp-command-keymap (few alternatives - "C-l", "C-c l")
-(setq lsp-keymap-prefix "s-l")
-
 (use-package lsp-mode
-    :hook (;; replace XXX-mode with concrete major-mode(e. g. python-mode)
-            (XXX-mode . lsp)
-            ;; if you want which-key integration
-            (lsp-mode . lsp-enable-which-key-integration))
-    :commands lsp)
+  :init
+  ;; set prefix for lsp-command-keymap (few alternatives - "C-l", "C-c l")
+  (setq lsp-keymap-prefix "C-c l")
+  :hook (;; replace XXX-mode with concrete major-mode(e. g. python-mode)
+         (XXX-mode . lsp)
+         ;; if you want which-key integration
+         (lsp-mode . lsp-enable-which-key-integration))
+  :commands lsp)
 
 ;; optionally
 (use-package lsp-ui :commands lsp-ui-mode)

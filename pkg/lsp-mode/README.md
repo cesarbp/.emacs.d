@@ -5,9 +5,8 @@ description: Language Server Protocol support with multiples languages support f
 
 [![](https://melpa.org/packages/lsp-mode-badge.svg)](https://melpa.org/#/lsp-mode)
 [![](https://stable.melpa.org/packages/lsp-mode-badge.svg)](https://stable.melpa.org/#/lsp-mode)
-[![](https://badges.gitter.im/emacs-lsp/lsp-mode.svg)](https://gitter.im/emacs-lsp/lsp-mode)
+[![](https://discordapp.com/api/guilds/789885435026604033/widget.png?style=shield)](https://discord.gg/swuxy5AAgT)
 [![](https://github.com/emacs-lsp/lsp-mode/workflows/CI/badge.svg)](https://github.com/emacs-lsp/lsp-mode/actions?query=workflow%3ACI)
-
 
 <img src="examples/logo.png" width="240" align="right">
 
@@ -21,8 +20,8 @@ Language Server Protocol Support for Emacs
   <a href="https://emacs-lsp.github.io/lsp-mode"><strong>homepage</strong></a> •
   <a href="https://emacs-lsp.github.io/lsp-mode/page/installation"><strong>installation</strong></a> •
   <a href="https://emacs-lsp.github.io/lsp-mode/page/languages"><strong>languages</strong></a> •
-  <a href="https://emacs-lsp.github.io/lsp-mode/page/settings"><strong>settings</strong></a> •
-  <a href="https://emacs-lsp.github.io/lsp-mode/page/extensions"><strong>extensions</strong></a> •
+  <a href="https://emacs-lsp.github.io/lsp-mode/page/settings/mode/"><strong>settings</strong></a> •
+  <a href="https://emacs-lsp.github.io/lsp-mode/tutorials/CPP-guide/"><strong>tutorials</strong></a> •
   <a href="https://emacs-lsp.github.io/lsp-mode/page/troubleshooting"><strong>troubleshooting</strong></a> •
   <a href="https://emacs-lsp.github.io/lsp-mode/page/gallery"><strong>screenshots</strong></a> •
   <a href="https://emacs-lsp.github.io/lsp-mode/page/faq"><strong>FAQ</strong></a>
@@ -53,7 +52,7 @@ most popular Emacs packages like `company`, `flycheck` and `projectile`.
     [company-lsp](https://github.com/tigersoldier/company-lsp) is no
     longer supported).
   - Hovers - using [lsp-ui](https://emacs-lsp.github.io/lsp-ui)
-  - Code actions - via `lsp-execute-code-action`, [modeline](./page/main-features/#code-actions-on-modeline) (recommended) or [lsp-ui](https://emacs-lsp.github.io/lsp-ui) sideline.
+  - Code actions - via `lsp-execute-code-action`, [modeline](https://emacs-lsp.github.io/lsp-mode/page/main-features/#code-actions-on-modeline) (recommended) or [lsp-ui](https://emacs-lsp.github.io/lsp-ui) sideline.
   - Code outline - using builtin
     [imenu](https://www.gnu.org/software/emacs/manual/html_node/emacs/Imenu.html)
     or `helm-imenu`
@@ -64,20 +63,25 @@ most popular Emacs packages like `company`, `flycheck` and `projectile`.
   - Code lens
   - Symbol highlights
   - Formatting
-  - [Project errors](./page/main-features/#project-errors-on-modeline) on modeline
+  - [Project errors](https://emacs-lsp.github.io/lsp-mode/page/main-features/#project-errors-on-modeline) on modeline
   - Debugger - [dap-mode](https://emacs-lsp.github.io/dap-mode/)
-  - [Breadcrumb on headerline](./page/main-features/#breadcrumb-on-headerline)
+  - [Breadcrumb on headerline](https://emacs-lsp.github.io/lsp-mode/page/main-features/#breadcrumb-on-headerline)
   - Helm integration -
     [helm-lsp](https://github.com/emacs-lsp/helm-lsp/)
   - Ivy integration - [lsp-ivy](https://github.com/emacs-lsp/lsp-ivy/)
+  - Consult integration - [consult-lsp](https://github.com/gagbo/consult-lsp)
   - Treemacs integration -
     [lsp-treemacs](https://github.com/emacs-lsp/lsp-treemacs)
-  - Semantic highlighting as defined by LSP 3.16 (compatible language servers include recent development builds of clangd and rust-analyzer)
+  - Semantic tokens as defined by LSP 3.16 (compatible language servers include recent development builds of clangd and rust-analyzer)
   - [which-key](https://github.com/justbur/emacs-which-key/) integration
     for better discovery
+  - [iedit](https://emacs-lsp.github.io/lsp-mode/page/main-features/#iedit)
+  - [dired](https://emacs-lsp.github.io/lsp-mode/page/main-features/#dired)
+  - [ido](https://emacs-lsp.github.io/lsp-mode/page/main-features/#integrations)
 
 ## Presentations/demos
-
+  - [System Crafters](https://twitter.com/SystemCrafters) channel
+    [Emacs IDE Videos](https://www.youtube.com/playlist?list=PLEoMzSkcN8oNvsrtk_iZSb94krGRofFjN)
   - [skybert](https://github.com/skybert)'s emacsconf
     [presentation](https://media.emacsconf.org/2019/19.html) (Java)
   - [thatwist](https://github.com/thatwist)'s ScalaUA Conference
@@ -111,7 +115,9 @@ Contributions are very much welcome.
 The `emacs-lsp` organization has more than **20.000 lines of code**, to keep all of this working,
 we need to implement new features and help the community on a lot of issues.
 
-You can help us keep going and improving it by **[supporting the project](https://opencollective.com/emacs-lsp)**
+You can help us keep going and improving it by **[supporting the project](https://github.com/sponsors/emacs-lsp)**
+
+<a href="https://opencollective.com/emacs-lsp"><img src="https://opencollective.com/emacs-lsp/tiers/backer.svg" /></a>
 
 ### Members
 
@@ -218,7 +224,7 @@ primary working on/responsible for.
           <sub><b>ericdallo</b></sub>
         </a>
         <br/>
-        Dart | Flutter | docs
+        Dart/Flutter | Clojure
       </div>
     </td>
     <td align="center">
@@ -243,6 +249,17 @@ primary working on/responsible for.
         </a>
         <br/>
         completions | pwsh
+      </div>
+    </td>
+    <td align="center">
+      <div>
+        <a href="https://github.com/nbfalcon">
+          <img src="https://github.com/nbfalcon.png" width="100px;" style="border-radius: 50%;" alt="nbfalcon"/>
+          <br/>
+          <sub><b>nbfalcon</b></sub>
+        </a>
+        <br/>
+        lsp-mode core | iedit
       </div>
     </td>
   </tr>

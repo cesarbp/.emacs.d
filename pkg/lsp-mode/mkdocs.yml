@@ -1,5 +1,7 @@
 site_name: LSP Mode - LSP support for Emacs
+site_description: Language Server Protocol Support for Emacs
 site_url: https://emacs-lsp.github.io/lsp-mode
+site_author: ercdll1337@gmail.com
 
 nav:
   - Home:
@@ -8,23 +10,45 @@ nav:
         - Installation: page/installation.md
         - Performance: page/performance.md
     - Main features: page/main-features.md
-    - Settings: page/settings.md
     - Keybindings: page/keybindings.md
     - Extensions:
         - UI: https://emacs-lsp.github.io/lsp-ui
         - Treemacs: https://github.com/emacs-lsp/lsp-treemacs
         - Helm: https://github.com/emacs-lsp/helm-lsp
         - Ivy: https://github.com/emacs-lsp/lsp-ivy
-    - Limitations: page/limitations.md
+        - Iedit: page/integration/iedit.md
+        - Ido: page/integration/ido.md
+    - File watchers: page/file-watchers.md
     - Remote: page/remote.md
     - FAQ: page/faq.md
     - Troubleshooting: page/troubleshooting.md
     - Adding new language: page/adding-new-language.md
+  - Settings:
+    - Features:
+      - Core: page/settings/mode.md
+      - Completion: page/settings/completion.md
+      - Diagnostics: page/settings/diagnostics.md
+      - Headerline: page/settings/headerline.md
+      - Modeline: page/settings/modeline.md
+      - Lens: page/settings/lens.md
+      - Icons: page/settings/icons.md
+      - Semantic Tokens: page/settings/semantic-tokens.md
+    - Extensions:
+      - UI: https://emacs-lsp.github.io/lsp-ui
+      - Treemacs: https://github.com/emacs-lsp/lsp-treemacs
+      - Helm: https://github.com/emacs-lsp/helm-lsp
+      - Ivy: https://github.com/emacs-lsp/lsp-ivy
+      - Consult: https://github.com/gagbo/consult-lsp
+      - Dired: page/settings/dired.md
+      - Iedit: page/settings/iedit.md
+      - Ido: page/settings/ido.md
   - Languages:
     - page/languages.md
+    - ActionScript: page/lsp-actionscript.md
     - Ada: page/lsp-ada.md
     - Angular: page/lsp-angular.md
     - Bash: page/lsp-bash.md
+    - Beancount: page/lsp-beancount.md
     - C++ (ccls): page/lsp-ccls.md
     - C++ (clangd): page/lsp-clangd.md
     - C#: page/lsp-csharp.md
@@ -32,6 +56,7 @@ nav:
     - CMake: page/lsp-cmake.md
     - Crystal: page/lsp-crystal.md
     - CSS/LessCSS/SASS/SCSS: page/lsp-css.md
+    - D: page/lsp-d.md
     - Dart: https://emacs-lsp.github.io/lsp-dart
     - Dhall: page/lsp-dhall.md
     - Dockerfile: page/lsp-dockerfile.md
@@ -43,38 +68,47 @@ nav:
     - Fortran: page/lsp-fortran.md
     - GDScript: page/lsp-gdscript.md
     - Go (gopls): page/lsp-gopls.md
-    - Go (bingo): page/lsp-bingo.md
+    - Grammarly: page/lsp-grammarly.md
     - Groovy: page/lsp-groovy.md
     - Hack: page/lsp-hack.md
     - HTML: page/lsp-html.md
     - Haskell: https://emacs-lsp.github.io/lsp-haskell
-    - Lua (EmmyLua): page/lsp-emmy-lua.md
-    - Lua (Lua Language Server): page/lsp-lua-language-server.md
-    - Lua (Lua-Lsp): page/lsp-lua-lsp.md
     - Java: https://emacs-lsp.github.io/lsp-java
+    - Javascript/Typescript (deno): page/lsp-deno.md
     - JavaScript/TypeScript (sourcegraph): page/lsp-typescript-javascript.md
     - JavaScript/TypeScript (theia-ide): page/lsp-typescript.md
     - JavaScript Flow: page/lsp-flow.md
     - Json: page/lsp-json.md
     - Julia: page/lsp-julia.md
     - Kotlin: page/lsp-kotlin.md
+    - LanguageTool (LTEX): page/lsp-ltex.md
+    - Lua (EmmyLua): page/lsp-emmy-lua.md
+    - Lua (Lua Language Server): page/lsp-lua-language-server.md
+    - Lua (Lua-Lsp): page/lsp-lua-lsp.md
+    - Markdown: page/lsp-markdown.md
     - MSSQL: https://emacs-lsp.github.io/lsp-mssql
     - Nim: page/lsp-nim.md
-    - OCaml (ocaml): page/lsp-ocaml.md
-    - OCaml (icaml-lsp): page/lsp-ocalm-lsp-server.md
+    - Nix: page/lsp-nix.md
+    - OCaml (ocaml-lsp): page/lsp-ocaml-lsp-server.md
     - Pascal/Object Pascal: page/lsp-pascal.md
     - Perl: page/lsp-perl.md
     - PHP (intelephense): page/lsp-intelephense.md
     - PHP (Serenata): page/lsp-serenata.md
     - PHP (felixbecker): page/lsp-php.md
+    - PHP (phpactor): page/lsp-phpactor.md
     - Powershell: page/lsp-pwsh.md
+    - Prolog: page/lsp-prolog.md
     - PureScript: page/lsp-purescript.md
-    - Python: page/lsp-pyls.md
+    - Python (Jedi Language Server): page/lsp-jedi.md
+    - Python (Palantir): page/lsp-pyls.md
     - Python (Pyright): https://emacs-lsp.github.io/lsp-pyright
     - Python (Microsoft): https://emacs-lsp.github.io/lsp-python-ms
     - R: page/lsp-r.md
+    - Racket (jeapostrophe): page/lsp-racket-langserver.md
+    - Racket (Theia): page/lsp-racket-language-server.md
     - Ruby: page/lsp-solargraph.md
-    - Rust: page/lsp-rust.md
+    - Rust (rust-analyzer): page/lsp-rust-analyzer.md
+    - Rust (rls): page/lsp-rust-rls.md
     - Scala: https://emacs-lsp.github.io/lsp-metals
     - SQL (sqls): page/lsp-sqls.md
     - Svelte: page/lsp-svelte.md
@@ -83,23 +117,33 @@ nav:
     - TeX, LaTeX, etc (digestif): page/lsp-tex.md
     - TeX, LaTeX, etc (texlab): page/lsp-texlab.md
     - TeX, LaTeX, etc (texlab, external): page/lsp-latex.md
-    - Verilog/SystemVerilog: page/lsp-verilog.md
+    - V: page/lsp-v.md
+    - Vala: page/lsp-vala.md
+    - Verilog/SystemVerilog (hdl-checker): page/lsp-verilog.md
+    - Verilog/SystemVerilog (svlangserver): page/lsp-svlangserver.md
     - VHDL: page/lsp-vhdl.md
     - Vimscript: page/lsp-vim.md
     - Vue: page/lsp-vetur.md
     - XML: page/lsp-xml.md
     - YAML: page/lsp-yaml.md
+    - Zig: page/lsp-zig.md
   - Debugging:
       - https://emacs-lsp.github.io/dap-mode
   - Gallery:
       - page/gallery.md
   - Changelog:
       - page/CHANGELOG.md
+  - Tutorials:
+      - 'Configuring Emacs as a C/C++ IDE': tutorials/CPP-guide.md
+      - 'A guide on disabling/enabling lsp-mode features': tutorials/how-to-turn-off.md
+      - 'React JavaScript Tutorial in Emacs': tutorials/reactjs-tutorial.md
+      - 'Configuring Emacs as a Clojure IDE': tutorials/clojure-guide.md
+      - 'Debugging Clojurescript': tutorials/debugging-clojure-script.md
   - Blog:
       - 2020:
           - '7.0 Release': blog/2020/7.0-release.md
   - Support us:
-      - https://opencollective.com/emacs-lsp
+      - https://github.com/sponsors/emacs-lsp
 
 extra_css:
   - stylesheets/layout.css
@@ -115,7 +159,7 @@ theme:
   icon:
     repo: fontawesome/brands/github
   features:
-    - tabs
+    - navigation.tabs
 
 extra:
   social:
@@ -123,8 +167,8 @@ extra:
       link: https://github.com/emacs-lsp/lsp-mode
     - icon: fontawesome/brands/twitter
       link: https://twitter.com/yonchovski
-    - icon: fontawesome/brands/gitter
-      link: https://gitter.im/emacs-lsp/lsp-mode
+    - icon: fontawesome/brands/discord
+      link: https://discord.gg/swuxy5AAgT
 
 repo_name: emacs-lsp/lsp-mode
 repo_url: https://github.com/emacs-lsp/lsp-mode
@@ -143,6 +187,7 @@ plugins:
   - search
   - awesome-pages
   - git-revision-date-localized
+  - rss
 
 google_analytics:
   - UA-165661257-1
