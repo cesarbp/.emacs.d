@@ -86,10 +86,16 @@
 ;; (setq python-shell-interpreter "jupyter"
 ;;       python-shell-interpreter-args "console --simple-prompt"
 ;;       python-shell-prompt-detect-failure-warning nil)
+(require 'conda)
+;; if you want interactive shell support, include:
+(conda-env-initialize-interactive-shells)
+;; if you want eshell support, include:
+(conda-env-initialize-eshell)
+
 (when (string-equal system-type "darwin")
       (setq python-shell-interpreter "python3"))
-(add-hook 'python-mode-hook 'anaconda-mode)
-(add-hook 'python-mode-hook 'anaconda-eldoc-mode)
+;(add-hook 'python-mode-hook 'anaconda-mode)
+;(add-hook 'python-mode-hook 'anaconda-eldoc-mode)
 (add-hook 'python-mode-hook 'flycheck-mode)
 (setq python-shell-interpreter "ipython"
       python-shell-interpreter-args "--simple-prompt -i")
@@ -101,6 +107,9 @@
     (add-to-list 'company-backends '(company-anaconda :with company-capf))))
 (add-hook 'python-mode-hook 'company-mode)
 (add-hook 'python-mode-hook 'add-company-python)
+(require 'lsp-python-ms)
+(setq lsp-python-ms-auto-install-server t)
+(add-hook 'python-mode-hook #'lsp)
 
 (defun projectile-pyenv-mode-set ()
   "Set pyenv version matching project name."
