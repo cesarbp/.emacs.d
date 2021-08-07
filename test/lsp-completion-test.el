@@ -26,12 +26,81 @@
 
 (require 'lsp-completion)
 (require 'ert)
+(require 'el-mock)
 
 (ert-deftest lsp-completion-test-candidate-kind ()
   (should (eq (lsp-completion--candidate-kind
                (propertize " " 'lsp-completion-item
                            (lsp-make-completion-item :kind 3)))
               'function)))
+
+(ert-deftest lsp-completion-test-fuz-score ()
+  (cl-labels ((do-test (query cands expected)
+                       (should (equal
+                                (sort cands
+                                      (lambda (l r) (> (lsp-completion--fuz-score query l)
+                                                       (lsp-completion--fuz-score query r))))
+                                expected))))
+    (do-test "as"
+             '("hashCode() : int"
+               "asSubclass(Class<U> clazz) : Class<? extends U>")
+             '("asSubclass(Class<U> clazz) : Class<? extends U>"
+               "hashCode() : int"))
+    (do-test "as"
+             '("hash-map"
+               "as-definition"
+               "as-def"
+               "As-selection"
+               "To-as-expected"
+               "amused"
+               "subclass-1"
+               "superand-sort")
+             '("as-definition"    ; Prefix match
+               "as-def"           ; Also prefix match (stable)
+               "As-selection"     ; case mismatch, rank lower to near next rank
+               "hash-map"         ; middle match
+               "amused"           ; partial match with prefix match
+               "To-as-expected"   ; more in middle match
+               "subclass-1"       ; more in middle match
+               "superand-sort"    ; partial match without prefix match
+               ))
+    (do-test "f"
+             '("f" "foo" "Foo" "aFoo" "afoo")
+             '("f" "foo" "Foo" "afoo" "aFoo"))
+    (do-test "foo"
+             '("foo" "afoo" "aafoo" "aaafoo" "Foo" "aFoo" "aaFoo" "aaaFoo")
+             '("foo" "Foo" "afoo" "aFoo" "aafoo" "aaFoo" "aaafoo" "aaaFoo"))
+    (do-test "F"
+             '("F" "foo" "Foo" "aFoo" "afoo")
+             '("F" "Foo" "foo" "aFoo" "afoo"))
+    (do-test "Fo"
+             '("Fo" "daFo" "safo")
+             '("Fo" "daFo" "safo"))
+    (do-test "F"
+             '("F" "daFo" "safo")
+             '("F" "daFo" "safo"))))
+
+(ert-deftest lsp-completion-test-get-context ()
+  (setq lsp-completion--cache nil)
+  (cl-labels ((do-get-context (arg)
+                              (let ((non-essential arg))
+                                (lsp-completion--get-context '("_"))))
+              (do-test-trigger-kind (arg)
+                                    (lsp:completion-context-trigger-kind
+                                     (do-get-context arg)))
+              (do-test-trigger-character (arg)
+                                         (lsp:completion-context-trigger-character?
+                                          (do-get-context arg))))
+    (mocklet ((lsp-completion--looking-back-trigger-characterp))
+      (should (equal (do-test-trigger-kind nil) 1))
+      (should (equal (do-test-trigger-character nil) nil))
+      (should (equal (do-test-trigger-kind t) 1))
+      (should (equal (do-test-trigger-character t) nil)))
+    (mocklet ((lsp-completion--looking-back-trigger-characterp => "_"))
+      (should (equal (do-test-trigger-kind nil) 1))
+      (should (equal (do-test-trigger-character nil) nil))
+      (should (equal (do-test-trigger-kind t) 2))
+      (should (equal (do-test-trigger-character t) "_")))))
 
 (provide 'lsp-completion-test)
 ;;; lsp-completion-test.el ends here

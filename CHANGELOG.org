@@ -1,8 +1,58 @@
 * Changelog
 ** Release 7.1
+  * Add ~lsp-sql-execute-paragraph~ to execute the current paragraph (like ~sql-send-paragraph~).
+  * Breaking change: bindings for commands under ~s~ (like ~lsp-workspace-shutdown~) were moved under ~w~ for better compatibility with =Spacemacs=
+  * removed ~lsp-print-performance~
+  * Add support for insert/replace when performing completion. When using
+    ~company~ pressing ~C-u RET~ will perform the alternative action (the
+    default is replace, but can be changed).
+  * Add ~lsp-auto-save-changed-buffers~ which save the changed buffers after any text edit operation by lsp-mode.
   * Safe renamed ~lsp-diagnose~ to ~lsp-doctor~.
   * Add ~lsp-modeline-code-actions-segments~ for a better customization.
   * Add [[https://github.com/sumneko/lua-language-server][Lua Language Server]], [[https://github.com/Alloyed/lua-lsp][Lua-LSP]] and improve EmmyLua.
+  * Add configuration settings for elixir-ls.
+  * Add Nix support.
+  * Add Racket support.
+  * Provided automatic installers for `lsp-clojure` (`clojure-lsp`).
+  * Added ~lsp-modeline-workspace-status-mode~ and option to disable it via ~lsp-modeline-workspace-status-enable~.
+  * Automatically download [[https://github.com/eclipse/lemminx][XML language server Lemminx]]
+  * Add Vala support.
+  * Add [[https://github.com/sorbet/sorbet][Sorbet Language Server]] for typechecking Ruby code.
+  * Add Elixir test lenses support.
+  * Enable headerline breadcrumb by default
+  * Add [[https://github.com/soutaro/steep][Steep Language Server]] for typechecking Ruby code.
+  * Rename semantic highlighting -> semantic tokens.
+  * Add [[https://github.com/phpactor/phpactor][Phpactor Language server]]
+  * Add ~lsp-headerline-breadcrumb-icons-enable~ to disable breadcrumb icons.
+  * Add ActionScript support.
+  * Add ~iedit~ integration (=documentHighlights=)
+  * Add an interactive =lsp-clangd-find-other-file= method that uses the clangd extension to return the corresponding header/cpp file from cpp/header file respectively.
+  * Add support for [[https://deno.land/][Deno language server]].
+  * Add ~lsp-dired-mode~ - integration between [[https://www.gnu.org/software/emacs/manual/html_node/emacs/Dired.html][dired]] and ~lsp-mode~
+  * Add Grammarly support.
+  * Add D support.
+  * Add Zig support.
+  * Add an interactive ~lsp-rust-analyzer-reload-workspace~ function that reloads the Rust-Analyzer workspace from Cargo.toml
+  * Rename ~lsp-rust-analyzer-cargo-load-out-dirs-from-check~ to ~lsp-rust-analyzer-cargo-run-build-scripts~ to align with upstream.
+  * Allow customization of ~lsp-file-watch-ignored-directories~ and ~lsp-file-watch-ignored-files~ at the root of an lsp workspace.
+  * Add client for markdown language server (called [[https://github.com/unifiedjs/unified-language-server][unified-language-server]])
+  * Add client for SystemVerilog language server (called [[https://github.com/imc-trading/svlangserver]])
+  * Add client for python-lsp-server, pylsp (https://github.com/python-lsp/python-lsp-server)
+  * Deprecate the Palantir Python language server, pyls.
+  * Add 2 rust-analyzer LSP extension function ~lsp-rust-analyzer-related-tests~ and
+    ~lsp-rust-analyzer-open-cargo-toml~
+  * Work around bug in NPM versions 7.0.0 through 7.4.1 that prevented ~lsp-install-server~ from working for NPM-based language servers.
+  * Add ~lsp-lens-place-position~ with option to place code lens at end of line as default.
+  * Add LanguageTool support.
+  * Add Beancount support.
+  * Update the ESLint server to 2.1.23
+  * Add ~lsp-eslint-warn-on-ignored-files~ and ~lsp-eslint-rules-customizations~
+    options to the ESLint client
+  * Change interface for configuring ESLint code actions - see documentation of
+    ~lsp-eslint-code-action-disable-rule-comment~ and
+    ~lsp-eslint-code-action-show-documentation~ for details
+  * Add interactive ~lsp-rust-analyzer-move-item-up~ and ~lsp-rust-analyzer-move-item-down~ functions to move Rust items / statements
+
 ** Release 7.0.1
   * Introduced ~lsp-diagnostics-mode~.
   * Safe renamed ~lsp-flycheck-default-level~ -> ~lsp-diagnostics-flycheck-default-level~

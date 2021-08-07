@@ -23,10 +23,16 @@
 
 (require 'lsp-mode)
 
+(defgroup lsp-modeline nil
+  "LSP support for modeline"
+  :prefix "lsp-modeline-"
+  :group 'lsp-mode
+  :tag "LSP Modeline")
+
 (defcustom lsp-modeline-code-actions-kind-regex "$\\|quickfix.*\\|refactor.*"
   "Regex for the code actions kinds to show in the modeline."
   :type 'string
-  :group 'lsp-mode)
+  :group 'lsp-modeline)
 
 (defcustom lsp-modeline-code-actions-segments '(count icon)
   "Define what should display on the modeline when code actions are available."
@@ -34,13 +40,24 @@
                   (const :tag "Show the lightbulb icon" icon)
                   (const :tag "Show the name of the preferred code action" name)
                   (const :tag "Show the count of how many code actions available" count)))
-  :group 'lsp-mode
+  :group 'lsp-modeline
+  :package-version '(lsp-mode . "7.1"))
+
+(defcustom lsp-modeline-code-action-fallback-icon "💡"
+  "Define what should display on the modeline when code actions are available."
+  :type 'string
+  :group 'lsp-modeline
   :package-version '(lsp-mode . "7.1"))
 
 (defface lsp-modeline-code-actions-face
   '((t :inherit homoglyph))
   "Face used to code action text on modeline."
-  :group 'lsp-faces)
+  :group 'lsp-modeline)
+
+(defface lsp-modeline-code-actions-preferred-face
+  '((t :foreground "yellow"))
+  "Face used to code action text on modeline."
+  :group 'lsp-modeline)
 
 ;;;###autoload
 (define-obsolete-variable-alias 'lsp-diagnostics-modeline-scope
@@ -48,7 +65,7 @@
 
 (defcustom lsp-modeline-diagnostics-scope :workspace
   "The modeline diagnostics scope."
-  :group 'lsp-mode
+  :group 'lsp-modeline
   :type '(choice (const :tag "File" :file)
                  (const :tag "Project" :workspace)
                  (const :tag "All Projects" :global))
@@ -57,24 +74,29 @@
 (declare-function all-the-icons-octicon "ext:all-the-icons" t t)
 (declare-function lsp-treemacs-errors-list "ext:lsp-treemacs" t)
 
+
 ;; code actions
 
 (defvar-local lsp-modeline--code-actions-string nil
   "Holds the current code action string on modeline.")
 
-(defun lsp-modeline--code-actions-icon ()
-  "Build the icon for modeline code actions."
+(defun lsp-modeline--code-action-face (preferred-code-action)
+  "Return the face checking if there is any PREFERRED-CODE-ACTION."
+  (if preferred-code-action
+      'lsp-modeline-code-actions-preferred-face
+    'lsp-modeline-code-actions-face))
+
+(defun lsp-modeline--code-actions-icon (face)
+  "Build the icon for modeline code actions using FACE."
   (if (require 'all-the-icons nil t)
       (all-the-icons-octicon "light-bulb"
-                             :face 'lsp-modeline-code-actions-face
+                             :face face
                              :v-adjust -0.0575)
-    (propertize "💡" 'face 'lsp-modeline-code-actions-face)))
+    (propertize lsp-modeline-code-action-fallback-icon 'face face)))
 
-(defun lsp-modeline--preferred-code-action-name (actions)
-  "Return the preferred code action name from ACTIONS."
-  (or (-some->> actions
-        (-first #'lsp:code-action-is-preferred?)
-        lsp-modeline--code-action->string)
+(defun lsp-modeline--code-action-name (actions preferred-code-action-title)
+  "Return the code action name from ACTIONS and PREFERRED-CODE-ACTION-TITLE."
+  (or preferred-code-action-title
       (->> actions
            lsp-seq-first
            lsp-modeline--code-action->string)))
@@ -87,15 +109,19 @@
 
 (defun lsp-modeline--build-code-actions-segments (actions)
   "Build the code ACTIONS string from the defined segments."
-  (mapconcat
-   (lambda (segment)
-     (pcase segment
-       ('icon (lsp-modeline--code-actions-icon))
-       ('name (propertize (lsp-modeline--preferred-code-action-name actions)
-                          'face 'lsp-modeline-code-actions-face))
-       ('count (propertize (number-to-string (seq-length actions))
-                           'face 'lsp-modeline-code-actions-face))))
-   lsp-modeline-code-actions-segments " "))
+  (let* ((preferred-code-action (-some->> actions
+                                  (-first #'lsp:code-action-is-preferred?)
+                                  lsp-modeline--code-action->string))
+         (face (lsp-modeline--code-action-face preferred-code-action)))
+    (mapconcat
+     (lambda (segment)
+       (pcase segment
+         ('icon (lsp-modeline--code-actions-icon face))
+         ('name (propertize (lsp-modeline--code-action-name actions preferred-code-action)
+                            'face face))
+         ('count (propertize (number-to-string (seq-length actions))
+                             'face face))))
+     lsp-modeline-code-actions-segments " ")))
 
 (defun lsp-modeline--build-code-actions-string (actions)
   "Build the string to be presented on modeline for code ACTIONS."
@@ -107,12 +133,15 @@
                                          (not (member (aref o 0) '(menu-bar normal-state)))))
                                 key-description)
                               ")"))
-          (built-string (lsp-modeline--build-code-actions-segments actions)))
+          (built-string (lsp-modeline--build-code-actions-segments actions))
+          (preferred-code-action (-some->> actions
+                                   (-first #'lsp:code-action-is-preferred?)
+                                   lsp-modeline--code-action->string)))
     (add-text-properties 0 (length built-string)
                          (list 'help-echo
                                (concat (format "Apply code actions %s\nmouse-1: " keybinding)
                                        (if single-action?
-                                           (lsp-modeline--preferred-code-action-name actions)
+                                           (lsp-modeline--code-action-name actions preferred-code-action)
                                          "select from multiple code actions"))
                                'mouse-face 'mode-line-highlight
                                'local-map (make-mode-line-mouse-map
@@ -123,7 +152,7 @@
                                                         (lsp-execute-code-action (lsp--select-action actions))))))
                          built-string)
     (unless (string= "" built-string)
-      (concat " " built-string))))
+      (concat built-string " "))))
 
 (defun lsp--modeline-update-code-actions (actions)
   "Update modeline with new code ACTIONS."
@@ -160,7 +189,7 @@
 ;;;###autoload
 (define-minor-mode lsp-modeline-code-actions-mode
   "Toggle code actions on modeline."
-  :group 'lsp-mode
+  :group 'lsp-modeline
   :global nil
   :lighter ""
   (cond
@@ -177,7 +206,6 @@
     (setq global-mode-string (remove '(t (:eval lsp-modeline--code-actions-string)) global-mode-string)))))
 
 
-
 ;; diagnostics
 
 (defvar-local lsp-modeline--diagnostics-string nil
@@ -213,10 +241,10 @@ The `:global' workspace is global one.")
                          (format "%s" (aref stats i))
                          'face
                          (cond
-                          ((equal i lsp/diagnostic-severity-error) 'error)
-                          ((equal i lsp/diagnostic-severity-warning) 'warning)
-                          ((equal i lsp/diagnostic-severity-information) 'success)
-                          ((equal i lsp/diagnostic-severity-hint) 'success)))))))
+                          ((= i lsp/diagnostic-severity-error) 'error)
+                          ((= i lsp/diagnostic-severity-warning) 'warning)
+                          ((= i lsp/diagnostic-severity-information) 'success)
+                          ((= i lsp/diagnostic-severity-hint) 'success)))))))
       (cl-incf i))
     (-> (s-join "/" strs)
         (propertize 'mouse-face 'mode-line-highlight
@@ -236,7 +264,7 @@ The `:global' workspace is global one.")
   (cl-labels ((calc-modeline ()
                              (let ((str (lsp-modeline-diagnostics-statistics)))
                                (if (string-empty-p str) ""
-                                 (concat " " str)))))
+                                 (concat str " ")))))
     (setq lsp-modeline--diagnostics-string
           (cl-case lsp-modeline-diagnostics-scope
             (:file (or lsp-modeline--diagnostics-string
@@ -272,7 +300,7 @@ The `:global' workspace is global one.")
 ;;;###autoload
 (define-minor-mode lsp-modeline-diagnostics-mode
   "Toggle diagnostics modeline."
-  :group 'lsp-mode
+  :group 'lsp-modeline
   :global nil
   :lighter ""
   (cond
@@ -286,6 +314,41 @@ The `:global' workspace is global one.")
     (remove-hook 'lsp-unconfigure-hook #'lsp-modeline--disable-diagnostics t)
     (remove-hook 'lsp-diagnostics-updated-hook 'lsp-modeline--diagnostics-reset-modeline-cache)
     (setq global-mode-string (remove '(t (:eval (lsp-modeline--diagnostics-update-modeline))) global-mode-string)))))
+
+
+;; workspace status
+
+(defun lsp-modeline--workspace-status-string ()
+  "Build the workspace status string."
+  '(t (:eval (-keep #'lsp--workspace-status-string (lsp-workspaces)))))
+
+(defun lsp-modeline--enable-workspace-status ()
+  "Enable workspace status on modeline."
+  (let ((status (lsp-modeline--workspace-status-string)))
+    (setq-local global-mode-string (if (-contains? global-mode-string status)
+                                       global-mode-string
+                                     (cons status global-mode-string)))))
+
+(defun lsp-modeline--disable-workspace-status ()
+  "Disable workspace status on modeline."
+  (let ((status (lsp-modeline--workspace-status-string)))
+    (setq-local global-mode-string (remove status global-mode-string))))
+
+;;;###autoload
+(define-minor-mode lsp-modeline-workspace-status-mode
+  "Toggle workspace status on modeline."
+  :group 'lsp-modeline
+  :global nil
+  :lighter ""
+  (cond
+   (lsp-modeline-workspace-status-mode
+    (add-hook 'lsp-configure-hook #'lsp-modeline--enable-workspace-status nil t)
+    (add-hook 'lsp-unconfigure-hook #'lsp-modeline--disable-workspace-status nil t))
+   (t
+    (remove-hook 'lsp-configure-hook #'lsp-modeline--enable-workspace-status t)
+    (remove-hook 'lsp-unconfigure-hook #'lsp-modeline--disable-workspace-status t))))
+
+(lsp-consistency-check lsp-modeline)
 
 (provide 'lsp-modeline)
 ;;; lsp-modeline.el ends here

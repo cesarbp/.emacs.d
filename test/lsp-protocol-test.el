@@ -27,9 +27,12 @@
 
 (require 'lsp-protocol)
 (require 'ert)
+(require 'seq)
 
 (eval-and-compile
-  (lsp-interface (MyPosition (:line :character :camelCase) (:optional))))
+  (lsp-interface (MyPosition (:line :character :camelCase) (:optional)))
+  (lsp-interface (MyRange (:start :end) nil))
+  (lsp-interface (MyExtendedRange (:start :end :specialProperty) nil)))
 
 (ert-deftest lsp-test-lsp-interface ()
   (let ((position (lsp-make-my-position :character 1 :line 2)))
@@ -50,9 +53,9 @@
     (-let (((&MyPosition? :optional?) nil))
       (should (null optional?)))
 
-    (should (not (lsp-my-position? position)))
+    (should-not (lsp-my-position? position))
     (lsp:set-my-position-camel-case position "camel-case")
-    (should (not (lsp-my-position? "xx")))
+    (should-not (lsp-my-position? "xx"))
     (should (lsp-my-position? position))
 
     (-let (((&MyPosition? :line) nil))
@@ -65,6 +68,104 @@
     (should (lsp-my-position? (lsp-make-my-position :character nil :line 2 :camel-case nil)))
 
     (should (lsp-my-position? (lsp-make-my-position :character nil :line 2 :camelCase nil)))))
+
+(ert-deftest lsp-test-pcase-patterns ()
+  (let ((particular-range (lsp-make-my-range :start
+                                             (lsp-make-my-position :line 10 :character 20 :camelCase nil)
+                                             :end
+                                             (lsp-make-my-position :line 30 :character 40 :camelCase nil)))
+        (particular-extended-range
+         (lsp-make-my-extended-range :start
+                                     (lsp-make-my-position :line 10 :character 20 :camelCase nil)
+                                     :end
+                                     (lsp-make-my-position :line 30 :character 40 :camelCase nil)
+                                     :specialProperty 42)))
+    (should (pcase particular-range
+              ((MyRange :start (MyPosition :line start-line :character start-char :camel-case start-camelcase)
+                        :end  (MyPosition :line end-line :character end-char :camel-case end-camelCase))
+               t)
+              (_ nil)))
+
+    (should (pcase particular-extended-range
+              ((MyExtendedRange)
+               t)
+              (_ nil)))
+
+    ;; a subclass can be matched by a pattern for a parent class
+    (should (pcase particular-extended-range
+              ((MyRange :start (MyPosition :line start-line :character start-char :camel-case start-camelcase)
+                        :end  (MyPosition :line end-line :character end-char :camel-case end-camelCase))
+               t)
+              (_ nil)))
+
+    ;; the new patterns should be able to be used with existing ones
+    (should (pcase (list particular-range
+                         particular-extended-range)
+              ((seq (MyRange)
+                    (MyExtendedRange))
+               t)
+              (_ nil)))
+
+    ;; the existing seq pattern should detect that the ranges are
+    ;; not in the order specified by the inner patterns
+    (should-not (pcase (list particular-range
+                             particular-extended-range)
+                  ((seq (MyExtendedRange)
+                        (MyRange))
+                   t)
+                  (_ nil)))
+
+    ;; when a binding appears more than once, then the first
+    ;; occurrence binds if it can match, and the subsequent
+    ;; occurrences turn into equality checks.  Since :character
+    ;; appears twice as a key name, the first instance binds it to 20,
+    ;; and the second instance is an equality check against the other
+    ;; :character value, which is different.
+    (should-not (pcase particular-range
+                  ((MyRange :start (MyPosition :line start-line :character :camel-case start-camelcase)
+                            :end  (MyPosition :line end-line :character :camel-case end-camelCase))
+                   t)
+                  (_ nil)))
+
+    ;; if an optional property is requested when it does not exist, we
+    ;; should still match if the required stuff matches. Missing
+    ;; optional properties are bound to nil.
+    (should (pcase particular-range
+              ((MyRange :start (MyPosition :optional?))
+               (null optional?))
+              (_ nil)))
+
+    ;; we cannot request a key (whether or not it is optional) not in
+    ;; the interface, even if the expr-val has all the types specified
+    ;; by the interface. This is a programmer error.
+    (should-error (pcase particular-range
+                    ((MyRange :something-unrelated)
+                     t)
+                    (_ nil)))
+
+    ;; we do not use camelCase at this stage. This is a programmer error.
+    (should-error (pcase particular-range
+                    ((MyRange :start (MyPosition :camelCase))
+                     t)
+                    (_ nil)))
+    (should (pcase particular-range
+              ((MyRange :start (MyPosition :camel-case))
+               t)
+              (_ nil)))
+
+    ;; :end is missing, so we should fail to match the interface.
+    (should-not (pcase (lsp-make-my-range :start (lsp-make-my-position :line 10 :character 20 :camelCase nil))
+                  ((MyRange)
+                   t)
+                  (_ nil)))))
+
+(ert-deftest lsp-test-member? ()
+  (let ((input (if lsp-use-plists
+                   (list :import_for_trait_assoc_item nil)
+                 (ht ("import_for_trait_assoc_item" nil)))))
+    (should (lsp-member? input :import_for_trait_assoc_item))
+    (lsp-put input :import_for_trait_assoc_item :json-false)
+    (should (eq (lsp-get input :import_for_trait_assoc_item) :json-false))))
 
 (provide 'lsp-protocol-test)
 ;;; lsp-protocol-test.el ends here

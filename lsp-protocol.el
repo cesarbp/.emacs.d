@@ -53,100 +53,197 @@ Example usage with `dash`.
   failure-reason?)
 
 \(fn (INTERFACE-NAME-1 REQUIRED-FIELDS-1 OPTIONAL-FIELDS-1) (INTERFACE-NAME-2 REQUIRED-FIELDS-2 OPTIONAL-FIELDS-2) ...)"
-  (->> interfaces
-       (-map (-lambda ((interface required optional))
-               (let ((params (nconc
-                              (-map (lambda (param-name)
-                                      (cons
-                                       (intern (concat ":" (s-dashed-words (symbol-name param-name)) "?"))
-                                       param-name))
-                                    optional)
-                              (-map (lambda (param-name)
-                                      (cons (intern (concat ":" (s-dashed-words (symbol-name param-name))))
-                                            param-name))
-                                    required))))
-                 (cl-list*
-                  `(defun ,(intern (format "dash-expand:&%s" interface)) (key source)
-                     (unless (or (member key ',(-map #'cl-first params))
-                                 (s-starts-with? ":_" (symbol-name key)))
-                       (error "Unknown key: %s.  Available keys: %s" key ',(-map #'cl-first params)))
-                     ,(if lsp-use-plists
-                          ``(plist-get ,source
-                                       ,(if (s-starts-with? ":_" (symbol-name key))
-                                            key
-                                          (cl-rest (assoc key ',params))))
-                        ``(gethash ,(if (s-starts-with? ":_" (symbol-name key))
-                                        (substring (symbol-name key) 1)
-                                      (substring (symbol-name
-                                                  (cl-rest (assoc key ',params)))
-                                                 1))
-                                   ,source)))
-                  `(defun ,(intern (format "dash-expand:&%s?" interface)) (key source)
-                     (unless (member key ',(-map #'cl-first params))
-                       (error "Unknown key: %s.  Available keys: %s" key ',(-map #'cl-first params)))
-                     ,(if lsp-use-plists
-                          ``(plist-get ,source
-                                       ,(if (s-starts-with? ":_" (symbol-name key))
-                                            key
-                                          (cl-rest (assoc key ',params))))
-                        ``(when (ht? ,source)
-                            (gethash ,(substring (symbol-name
-                                                  (cl-rest (assoc key ',params)))
-                                                 1)
-                                     ,source))))
+  (with-case-table ascii-case-table
+    (->> interfaces
+         (-map (-lambda ((interface required optional))
+                 (let ((params (nconc
+                                (-map (lambda (param-name)
+                                        (cons
+                                         (intern (concat ":" (s-dashed-words (symbol-name param-name)) "?"))
+                                         param-name))
+                                      optional)
+                                (-map (lambda (param-name)
+                                        (cons (intern (concat ":" (s-dashed-words (symbol-name param-name))))
+                                              param-name))
+                                      required))))
+                   (cl-list*
+                    `(defun ,(intern (format "dash-expand:&%s" interface)) (key source)
+                       (unless (or (member key ',(-map #'cl-first params))
+                                   (s-starts-with? ":_" (symbol-name key)))
+                         (error "Unknown key: %s.  Available keys: %s" key ',(-map #'cl-first params)))
+                       ,(if lsp-use-plists
+                            ``(plist-get ,source
+                                         ,(if (s-starts-with? ":_" (symbol-name key))
+                                              key
+                                            (cl-rest (assoc key ',params))))
+                          ``(gethash ,(if (s-starts-with? ":_" (symbol-name key))
+                                          (substring (symbol-name key) 1)
+                                        (substring (symbol-name
+                                                    (cl-rest (assoc key ',params)))
+                                                   1))
+                                     ,source)))
+                    `(defun ,(intern (format "dash-expand:&%s?" interface)) (key source)
+                       (unless (member key ',(-map #'cl-first params))
+                         (error "Unknown key: %s.  Available keys: %s" key ',(-map #'cl-first params)))
+                       ,(if lsp-use-plists
+                            ``(plist-get ,source
+                                         ,(if (s-starts-with? ":_" (symbol-name key))
+                                              key
+                                            (cl-rest (assoc key ',params))))
+                          ``(when (ht? ,source)
+                              (gethash ,(substring (symbol-name
+                                                    (cl-rest (assoc key ',params)))
+                                                   1)
+                                       ,source))))
 
-                  `(defun ,(intern (format "lsp-%s?" (s-dashed-words (symbol-name interface)))) (object)
-                     (cond
-                      ((ht? object)
-                       (-all? (let ((keys (ht-keys object)))
-                                (lambda (prop)
-                                  (member prop keys)))
-                              ',(-map (lambda (field-name)
-                                        (substring (symbol-name field-name) 1))
-                                      required)))
-                      ((listp object) (-all? (lambda (prop)
-                                               (plist-member object prop))
-                                             ',required))))
-                  `(cl-defun ,(intern (format "lsp-make-%s" (s-dashed-words (symbol-name interface))))
-                       (&rest plist &key ,@(-map (-lambda ((key))
-                                                   (intern (substring (symbol-name key) 1))) params)
-                              &allow-other-keys)
-                     (ignore ,@(-map (-lambda ((key))
-                                       (intern (substring (symbol-name key) 1))) params))
-                     ,(format "Constructs %s from `plist.'
+                    `(defun ,(intern (format "lsp-%s?" (s-dashed-words (symbol-name interface)))) (object)
+                       (cond
+                        ((ht? object)
+                         (-all? (let ((keys (ht-keys object)))
+                                  (lambda (prop)
+                                    (member prop keys)))
+                                ',(-map (lambda (field-name)
+                                          (substring (symbol-name field-name) 1))
+                                        required)))
+                        ((listp object) (-all? (lambda (prop)
+                                                 (plist-member object prop))
+                                               ',required))))
+                    `(cl-defun ,(intern (format "lsp-make-%s" (s-dashed-words (symbol-name interface))))
+                         (&rest plist &key ,@(-map (-lambda ((key))
+                                                     (intern (substring (symbol-name key) 1))) params)
+                                &allow-other-keys)
+                       (ignore ,@(-map (-lambda ((key))
+                                         (intern (substring (symbol-name key) 1))) params))
+                       ,(format "Constructs %s from `plist.'
 Allowed params: %s" interface (reverse (-map #'cl-first params)))
-                     ,(if lsp-use-plists
-                          `(-mapcat (-lambda ((key value))
-                                      (list (or (cl-rest (assoc key ',params)) key) value))
-                                    (-partition 2 plist))
-                        `(let (($$result (ht)))
-                           (mapc (-lambda ((key value))
-                                   (puthash (lsp-keyword->string (or (cl-rest (assoc key ',params))
-                                                                     key))
-                                            value
-                                            $$result))
-                                 (-partition 2 plist))
-                           $$result)))
-                  (-mapcat (-lambda ((label . name))
-                             (list
-                              `(defun ,(intern (format "lsp:%s-%s"
-                                                       (s-dashed-words (symbol-name interface))
-                                                       (substring (symbol-name label) 1)))
-                                   (object)
-                                 ,(if lsp-use-plists
-                                      `(plist-get object ,name)
-                                    `(when (ht? object) (gethash ,(lsp-keyword->string name) object))))
-                              `(defun ,(intern (format "lsp:set-%s-%s"
-                                                       (s-dashed-words (symbol-name interface))
-                                                       (substring (symbol-name label) 1)))
-                                   (object value)
-                                 ,@(if lsp-use-plists
-                                       `((plist-put object ,name value))
-                                     `((puthash ,(lsp-keyword->string name) value object)
-                                       object)))))
-                           params)))))
-       (apply #'append)
-       (cl-list* 'progn)))
+                       ,(if lsp-use-plists
+                            `(-mapcat (-lambda ((key value))
+                                        (list (or (cl-rest (assoc key ',params)) key) value))
+                                      (-partition 2 plist))
+                          `(let (($$result (ht)))
+                             (mapc (-lambda ((key value))
+                                     (puthash (lsp-keyword->string (or (cl-rest (assoc key ',params))
+                                                                       key))
+                                              value
+                                              $$result))
+                                   (-partition 2 plist))
+                             $$result)))
+                    `(pcase-defmacro ,interface (&rest property-bindings)
+                       ,(if lsp-use-plists
+                            ``(and
+                               (pred listp)
+                               ;; Check if all the types required by the
+                               ;; interface exist in the expr-val.
+                               ,@(-map
+                                  (lambda (key)
+                                    `(pred
+                                      (lambda (plist)
+                                        (plist-member plist ,key))))
+                                  ',required)
+                               ;; Recursively generate the bindings.
+                               ,@(let ((current-list property-bindings)
+                                       (output-bindings nil))
+                                   ;; Invariant: while current-list is
+                                   ;; non-nil, the car of current-list is
+                                   ;; always of the form :key, while the
+                                   ;; cadr of current-list is either a)
+                                   ;; nil, b) of the form :key-next or c)
+                                   ;; a pcase pattern that can
+                                   ;; recursively match an expression.
+                                   (while current-list
+                                     (-let* (((curr-binding-as-keyword next-entry . _) current-list)
+                                             (curr-binding-as-camelcased-symbol
+                                              (or (alist-get curr-binding-as-keyword ',params)
+                                                  (error "Unknown key: %s.  Available keys: %s"
+                                                         (symbol-name curr-binding-as-keyword)
+                                                         ',(-map #'cl-first params))))
+                                             (bound-name (lsp-keyword->symbol curr-binding-as-keyword))
+                                             (next-entry-is-key-or-nil
+                                              (and (symbolp next-entry)
+                                                   (or (null next-entry)
+                                                       (s-starts-with? ":" (symbol-name next-entry))))))
+                                       (cond
+                                        ;; If the next-entry is either a
+                                        ;; plist-key or nil, then bind to
+                                        ;; bound-name the value corresponding
+                                        ;; to the camelcased symbol.  Pop
+                                        ;; current-list once.
+                                        (next-entry-is-key-or-nil
+                                         (push `(app (lambda (plist)
+                                                       (plist-get plist ,curr-binding-as-camelcased-symbol))
+                                                     ,bound-name)
+                                               output-bindings)
+                                         (setf current-list (cdr current-list)))
+                                        ;; Otherwise, next-entry is a pcase
+                                        ;; pattern we recursively match to the
+                                        ;; expression. This can in general
+                                        ;; create additional bindings that we
+                                        ;; persist in the top level of
+                                        ;; bindings.  We pop current-list
+                                        ;; twice.
+                                        (t
+                                         (push `(app (lambda (plist)
+                                                       (plist-get plist ,curr-binding-as-camelcased-symbol))
+                                                     ,next-entry)
+                                               output-bindings)
+                                         (setf current-list (cddr current-list))))))
+                                   output-bindings))
+                          ``(and
+                             (pred ht?)
+                             ,@(-map
+                                (lambda (key)
+                                  `(pred
+                                    (lambda (hash-table)
+                                      (ht-contains? hash-table ,(lsp-keyword->string key)))))
+                                ',required)
+                             ,@(let ((current-list property-bindings)
+                                     (output-bindings nil))
+                                 (while current-list
+                                   (-let* (((curr-binding-as-keyword next-entry . _) current-list)
+                                           (curr-binding-as-camelcased-string
+                                            (lsp-keyword->string (or (alist-get curr-binding-as-keyword ',params)
+                                                                     (error "Unknown key: %s.  Available keys: %s"
+                                                                            (symbol-name curr-binding-as-keyword)
+                                                                            ',(-map #'cl-first params)))))
+                                           (bound-name (lsp-keyword->symbol curr-binding-as-keyword))
+                                           (next-entry-is-key-or-nil
+                                            (and (symbolp next-entry)
+                                                 (or (null next-entry)
+                                                     (s-starts-with? ":" (symbol-name next-entry))))))
+                                     (cond
+                                      (next-entry-is-key-or-nil
+                                       (push `(app (lambda (hash-table)
+                                                     (ht-get hash-table ,curr-binding-as-camelcased-string))
+                                                   ,bound-name)
+                                             output-bindings)
+                                       (setf current-list (cdr current-list)))
+                                      (t
+                                       (push `(app (lambda (hash-table)
+                                                     (ht-get hash-table ,curr-binding-as-camelcased-string))
+                                                   ,next-entry)
+                                             output-bindings)
+                                       (setf current-list (cddr current-list))))))
+                                 output-bindings))))
+                    (-mapcat (-lambda ((label . name))
+                               (list
+                                `(defun ,(intern (format "lsp:%s-%s"
+                                                         (s-dashed-words (symbol-name interface))
+                                                         (substring (symbol-name label) 1)))
+                                     (object)
+                                   ,(if lsp-use-plists
+                                        `(plist-get object ,name)
+                                      `(when (ht? object) (gethash ,(lsp-keyword->string name) object))))
+                                `(defun ,(intern (format "lsp:set-%s-%s"
+                                                         (s-dashed-words (symbol-name interface))
+                                                         (substring (symbol-name label) 1)))
+                                     (object value)
+                                   ,@(if lsp-use-plists
+                                         `((plist-put object ,name value))
+                                       `((puthash ,(lsp-keyword->string name) value object)
+                                         object)))))
+                             params)))))
+         (apply #'append)
+         (cl-list* 'progn))))
 
 (if lsp-use-plists
     (progn
@@ -160,7 +257,10 @@ Allowed params: %s" interface (reverse (-map #'cl-first params)))
               (-partition 2 value )))
       (defalias 'lsp-merge 'append)
       (defalias 'lsp-empty? 'null)
-      (defalias 'lsp-copy 'copy-sequence))
+      (defalias 'lsp-copy 'copy-sequence)
+      (defun lsp-member? (from key)
+        (when (listp from)
+          (plist-member from key))))
   (defun lsp-get (from key)
     (when from
       (gethash (lsp-keyword->string key) from)))
@@ -172,7 +272,11 @@ Allowed params: %s" interface (reverse (-map #'cl-first params)))
       (maphash fn value)))
   (defalias 'lsp-merge 'ht-merge)
   (defalias 'lsp-empty? 'ht-empty?)
-  (defalias 'lsp-copy 'ht-copy))
+  (defalias 'lsp-copy 'ht-copy)
+  (defun lsp-member? (from key)
+    (when (hash-table-p from)
+      (not (eq (gethash (lsp-keyword->string key) from :__lsp_default)
+               :__lsp_default)))))
 
 (defmacro lsp-defun (name match-form &rest body)
   "Define a function named NAME.
@@ -241,7 +345,7 @@ See `-let' for a description of the destructuring mechanism."
                (JSONResult nil (:params :id :method))
                (JSONNotification (:params :method) nil)
                (JSONRequest (:params :method) nil)
-               (JSONError (:message :code) nil)
+               (JSONError (:message :code) (:data))
                (ProgressParams (:token :value) nil)
                (Edit (:kind) nil)
                (WorkDoneProgress (:kind) nil)
@@ -251,7 +355,11 @@ See `-let' for a description of the destructuring mechanism."
                (WorkDoneProgressOptions nil (:workDoneProgress))
                (SemanticTokensOptions (:legend) (:rangeProvider :documentProvider))
                (SemanticTokensLegend (:tokenTypes :tokenModifiers))
-               (SematicTokensPartialResult (:data) nil))
+               (SemanticTokensResult (:resultId) (:data))
+               (SemanticTokensPartialResult nil (:data))
+               (SemanticTokensEdit (:start :deleteCount) (:data))
+               (SemanticTokensDelta (:resultId) (:edits))
+               (SemanticTokensDeltaPartialResult nil (:edits)))
 
 (lsp-interface (v1:ProgressParams (:id :title) (:message :percentage :done)))
 
@@ -261,26 +369,48 @@ See `-let' for a description of the destructuring mechanism."
     (lsp-get ,source ,key)))
 
 (lsp-interface (eslint:StatusParams  (:state) nil)
-               (eslint:OpenESLintDocParams (:url) nil))
+               (eslint:OpenESLintDocParams (:url) nil)
+               (eslint:ConfirmExecutionParams (:scope :file :libraryPath) nil))
 
 (lsp-interface (haxe:ProcessStartNotification (:title) nil))
 
 (lsp-interface (pwsh:ScriptRegion (:StartLineNumber :EndLineNumber :StartColumnNumber :EndColumnNumber :Text) nil))
+
+(lsp-interface (omnisharp:ErrorMessage (:Text :FileName :Line :Column))
+               (omnisharp:ProjectInformationRequest (:FileName))
+               (omnisharp:MsBuildProject (:IsUnitProject :IsExe :Platform :Configuration :IntermediateOutputPath :OutputPath :TargetFrameworks :SourceFiles :TargetFramework :TargetPath :AssemblyName :Path :ProjectGuid))
+               (omnisharp:ProjectInformation (:ScriptProject :MsBuildProject))
+               (omnisharp:CodeStructureRequest (:FileName))
+               (omnisharp:CodeStructureResponse (:Elements))
+               (omnisharp:CodeElement (:Kind :Name :DisplayName :Children :Ranges :Properties))
+               (omnisharp:CodeElementProperties () (:static :accessibility :testMethodName :testFramework))
+               (omnisharp:Range (:Start :End))
+               (omnisharp:RangeList () (:attributes :full :name))
+               (omnisharp:Point (:Line :Column))
+               (omnisharp:RunTestsInClassRequest (:MethodNames :RunSettings :TestFrameworkname :TargetFrameworkVersion :NoBuild :Line :Column :Buffer :FileName))
+               (omnisharp:RunTestResponse (:Results :Pass :Failure :ContextHadNoTests))
+               (omnisharp:TestMessageEvent (:MessageLevel :Message))
+               (omnisharp:DotNetTestResult (:MethodName :Outcome :ErrorMessage :ErrorStackTrace :StandardOutput :StandardError)))
 
 (lsp-interface (rls:Cmd (:args :binary :env :cwd) nil))
 
 (defconst lsp/rust-analyzer-inlay-hint-kind-type-hint "TypeHint")
 (defconst lsp/rust-analyzer-inlay-hint-kind-param-hint "ParameterHint")
 (defconst lsp/rust-analyzer-inlay-hint-kind-chaining-hint "ChainingHint")
-(lsp-interface (rust-analyzer:SyntaxTreeParams (:textDocument) (:range))
+(lsp-interface (rust-analyzer:AnalyzerStatusParams (:textDocument))
+               (rust-analyzer:SyntaxTreeParams (:textDocument) (:range))
                (rust-analyzer:ExpandMacroParams (:textDocument :position) nil)
                (rust-analyzer:ExpandedMacro (:name :expansion) nil)
                (rust-analyzer:MatchingBraceParams (:textDocument :positions) nil)
+               (rust-analyzer:OpenCargoTomlParams (:textDocument) nil)
                (rust-analyzer:ResovedCodeActionParams (:id :codeActionParams) nil)
                (rust-analyzer:JoinLinesParams (:textDocument :ranges) nil)
+               (rust-analyzer:MoveItemParams (:textDocument :range :direction) nil)
                (rust-analyzer:RunnablesParams (:textDocument) (:position))
                (rust-analyzer:Runnable (:label :kind :args) (:location))
                (rust-analyzer:RunnableArgs (:cargoArgs :executableArgs) (:workspaceRoot))
+               (rust-analyzer:RelatedTestsParams (:textDocument :position) nil)
+               (rust-analyzer:RelatedTests (:runnable) nil)
                (rust-analyzer:InlayHint (:range :label :kind) nil)
                (rust-analyzer:InlayHintsParams (:textDocument) nil)
                (rust-analyzer:SsrParams (:query :parseOnly) nil)
@@ -347,6 +477,10 @@ See `-let' for a description of the destructuring mechanism."
   [nil PlainText Snippet])
 (defconst lsp/insert-text-format-plain-text 1)
 (defconst lsp/insert-text-format-snippet 2)
+(defvar lsp/insert-text-mode-lookup
+  [nil AsIs AdjustIndentation])
+(defconst lsp/insert-text-mode-as-it 1)
+(defconst lsp/insert-text-mode-adjust-indentation 2)
 (defvar lsp/message-type-lookup
   [nil Error Warning Info Log])
 (defconst lsp/message-type-error 1)
@@ -420,11 +554,11 @@ See `-let' for a description of the destructuring mechanism."
  (CallHierarchyItem (:kind :name :range :selectionRange :uri) (:detail :tags))
  (ClientCapabilities nil (:experimental :textDocument :workspace))
  (ClientInfo (:name) (:version))
- (CodeActionCapabilities nil (:codeActionLiteralSupport :dynamicRegistration :isPreferredSupport))
+ (CodeActionCapabilities nil (:codeActionLiteralSupport :dynamicRegistration :isPreferredSupport :dataSupport :resolveSupport))
  (CodeActionContext (:diagnostics) (:only))
  (CodeActionKindCapabilities (:valueSet) nil)
  (CodeActionLiteralSupportCapabilities nil (:codeActionKind))
- (CodeActionOptions nil (:codeActionKinds))
+ (CodeActionOptions nil (:codeActionKinds :resolveProvider))
  (CodeLensCapabilities nil (:dynamicRegistration))
  (CodeLensOptions (:resolveProvider) nil)
  (Color (:red :green :blue :alpha) nil)
@@ -434,11 +568,11 @@ See `-let' for a description of the destructuring mechanism."
  (Command (:title :command) (:arguments))
  (CompletionCapabilities nil (:completionItem :completionItemKind :contextSupport :dynamicRegistration))
  (CompletionContext (:triggerKind) (:triggerCharacter))
- (CompletionItem (:label) (:additionalTextEdits :command :commitCharacters :data :deprecated :detail :documentation :filterText :insertText :insertTextFormat :kind :preselect :sortText :tags :textEdit :score :keepWhitespace))
- (CompletionItemCapabilities nil (:commitCharactersSupport :deprecatedSupport :documentationFormat :preselectSupport :snippetSupport :tagSupport))
+ (CompletionItem (:label) (:additionalTextEdits :command :commitCharacters :data :deprecated :detail :documentation :filterText :insertText :insertTextFormat :insertTextMode :kind :preselect :sortText :tags :textEdit :score))
+ (CompletionItemCapabilities nil (:commitCharactersSupport :deprecatedSupport :documentationFormat :preselectSupport :snippetSupport :tagSupport :insertReplaceSupport :resolveSupport))
  (CompletionItemKindCapabilities nil (:valueSet))
  (CompletionItemTagSupportCapabilities (:valueSet) nil)
- (CompletionOptions nil (:resolveProvider :triggerCharacters))
+ (CompletionOptions nil (:resolveProvider :triggerCharacters :allCommitCharacters))
  (ConfigurationItem nil (:scopeUri :section))
  (CreateFileOptions nil (:ignoreIfExists :overwrite))
  (DeclarationCapabilities nil (:dynamicRegistration :linkSupport))
@@ -510,6 +644,7 @@ See `-let' for a description of the destructuring mechanism."
  (TextDocumentItem (:languageId :text :uri :version) nil)
  (TextDocumentSyncOptions nil (:change :openClose :save :willSave :willSaveWaitUntil))
  (TextEdit (:newText :range) nil)
+ (InsertReplaceEdit (:newText :insert :replace) nil)
  (SnippetTextEdit (:newText :range) (:insertTextFormat))
  (TypeDefinitionCapabilities nil (:dynamicRegistration :linkSupport))
  (TypeHierarchyCapabilities nil (:dynamicRegistration))
@@ -519,7 +654,7 @@ See `-let' for a description of the destructuring mechanism."
  (WorkspaceClientCapabilities nil (:applyEdit :configuration :didChangeConfiguration :didChangeWatchedFiles :executeCommand :symbol :workspaceEdit :workspaceFolders))
  (WorkspaceEdit nil (:changes :documentChanges :resourceChanges))
  (WorkspaceEditCapabilities nil (:documentChanges :failureHandling :resourceChanges :resourceOperations))
- (WorkspaceFolder (:uri) (:name))
+ (WorkspaceFolder (:uri :name) nil)
  (WorkspaceFoldersChangeEvent (:removed :added) nil)
  (WorkspaceFoldersOptions nil (:changeNotifications :supported))
  (WorkspaceServerCapabilities nil (:workspaceFolders))
@@ -530,7 +665,7 @@ See `-let' for a description of the destructuring mechanism."
  (CallHierarchyOutgoingCall (:to :fromRanges) nil)
  (CallHierarchyOutgoingCallsParams (:item) nil)
  (CallHierarchyPrepareParams (:textDocument :position) (:uri))
- (CodeAction (:title) (:command :diagnostics :edit :isPreferred :kind))
+ (CodeAction (:title) (:command :diagnostics :edit :isPreferred :kind :data))
  (CodeActionKind nil nil)
  (CodeActionParams (:textDocument :context :range) nil)
  (CodeLens (:range) (:command :data))

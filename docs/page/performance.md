@@ -26,40 +26,36 @@ Benchmarks show that Emacs 27 is `~15 times` faster than Emacs when using Elisp 
 (setq read-process-output-max (* 1024 1024)) ;; 1mb
 ```
 
-- Make sure that you are using `company-capf` as the completion provider with:
-
-``` elisp
-(setq lsp-completion-provider :capf)
-```
-
-*Note:* - to verify which `company` backend implementation you are using do `M-x company-diag` when performing auto-completion.
-
 - Optional: Disable `lsp-ui`. Normally, `lsp-ui` is very fast but in some systems (especially when using `Windows`) `lsp-ui` overlays and popups might slow down emacs.
 - Optional: fine-tune `lsp-idle-delay`. This variable determines how often lsp-mode will refresh the highlights, lenses, links, etc while you type.
 
 ``` elisp
 (setq lsp-idle-delay 0.500)
 ```
+### gccemacs
+
+[gccemacs](https://akrl.sdf.org/gccemacs.html) is a bleeding-edge version of `Emacs` that compiles elisp to native code, resulting in more than 200% speedup. For everyone looking for optimal performance, `gccemacs` is the way to go.
 
 ## Ignore watch folders/files
 
 If the server supports watch files, by default `lsp-mode` tries to watch all files and folders of the project ignoring the regexp from `lsp-file-watch-ignored`. If you don't want some file or folder
-to be watched for performance reasons, you can add a regexp to that variable excluding the file or folder. 
-Also you can disable the file watch feature with:
+to be watched for performance reasons, you can add a regexp to that variable excluding the file or folder.
+
+Check the [file watchers section](../file-watchers) for details.
+
+## Check if logging is switched off.
+
+Make sure `lsp-log-io` is `nil`. You might have forgotten it after a debugging session, for example. It can cause a great performance hit.
 
 ```elisp
-(setq lsp-enable-file-watchers nil)
+(setq lsp-log-io nil) ; if set to true can cause a performance hit
 ```
+
+Sometimes you might need to check logging for specific LSP server configuration as well, i.e. for `lsp-eslint` it is: `lsp-eslint-trace-server`.
 
 ## Reporting performance problems
 
 If you have tried all of the non-optional steps from the list and `emacs` is still not very responsive please open a PR with the following information:
-
-- Collect **lsp-log** data after setting `lsp-print-performance` to `t`.
-
-``` elisp
-(setq lsp-print-performance t)
-```
 
 - Include emacs performance report. Use the following step to collect it:
   - `M-x profiler-start` and select `CPU`
