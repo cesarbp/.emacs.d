@@ -40,11 +40,7 @@ Probably install haskell with nix
 
 ## Python
 
-Install [pyenv](https://github.com/pyenv/pyenv) probably with [pyenv-virtualenv](https://github.com/pyenv/pyenv-virtualenv)
-
-And _before_ you open a python file do `M-x pyenv-mode-set` and choose your
-pyenv env. Next do `M-x pythonic-activate` and navigate to your virtualenv for
-anaconda to work well.
+Do pyvenv-activate and maybe conda-env-activate too.
 
 ## Rust
 
